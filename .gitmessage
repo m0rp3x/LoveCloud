@@ -1,0 +1,11 @@
+
+# type(scope): emoji short description in English
+#
+# feat(feed): 💌 add replies to love notes
+# fix(vault): 🩹 close access when the session expires
+# style(cloud): 🎀 draw envelopes for shared albums
+# docs(readme): 💐 update the first-run guide
+#
+# If useful, explain why the change is needed and how it was verified.
+# Write the subject, body and BREAKING CHANGE notes in English.
+# One commit, one thoughtful change. ♡
