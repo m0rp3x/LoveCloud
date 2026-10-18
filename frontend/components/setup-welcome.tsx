@@ -1,0 +1,3 @@
+'use client';
+import{useI18n}from'@/lib/i18n';import{LanguageSwitch}from'./appearance';
+export default function SetupWelcome(){const{t}=useI18n();return <main className="lc-auth"><div className="lc-auth-paper lc-setup-welcome"><LanguageSwitch/><div className="lc-auth-berry" aria-hidden="true"/><h1>{t('Настроим наше пространство')}</h1><p>{t('Откройте одноразовую ссылку, которую выдал установщик. Она начинается с адреса вашего LoveCloud и /setup#token=…')}</p><p className="wp-footnote">{t('Секретная ссылка даёт доступ к первому запуску. Не передавайте её посторонним.')}</p><a className="wp-button wp-primary" href="/setup">{t('Продолжить настройку')}</a></div></main>;}

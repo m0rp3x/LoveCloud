@@ -1,0 +1,36 @@
+'use client';
+import {useI18n, translate as t, intlLocale} from '@/lib/i18n';
+import { useEffect, useState } from 'react';
+import useSWR from 'swr';
+import { api, safeLink } from '@/lib/api';
+import type { User, Wish } from '@/lib/types';
+import type { Member } from './planner';
+import { ActionButton, Button, Dialog, Empty, ErrorBox, Field, Footer, Heading, Loading, priorityLabels, useAction } from './ui';
+export default function Wishes({ user, members, createVersion = 0, onConsumed }: {
+    user: User;
+    members: Member[];
+    createVersion?: number;
+    onConsumed?: () => void;
+}) {
+    const { t } = useI18n();
+    const [owner, setOwner] = useState(user.id);
+    const [category, setCategory] = useState('all');
+    const [editing, setEditing] = useState<Partial<Wish> | null>(null);
+    const action = useAction();
+    const { data: wishes, error, isLoading, mutate } = useSWR<Wish[]>('/wishes?ownerId=' + encodeURIComponent(owner), api);
+    const own = owner === user.id;
+    const categories = [...new Set((wishes || []).map(w => w.category))];
+    const list = (wishes || []).filter(w => category === 'all' || w.category === category);
+    useEffect(() => { if (createVersion) {
+        setOwner(user.id);
+        setEditing({ priority: 'normal', category: t("Другое") });
+        onConsumed?.();
+    } }, [createVersion, user.id]);
+    const money = (v: number) => new Intl.NumberFormat(intlLocale(), { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(v);
+    return <><Heading title={t("Вишлисты друг другу")} subtitle={t("Наши маленькие желания и идеи подарков")}><Button icon="plus" className="wp-primary" onClick={() => { setOwner(user.id); setEditing({ priority: 'normal', category: t("Другое") }); }}>{t("Добавить желание")}</Button></Heading><div className="wp-toolbar"><div className="wp-segment" aria-label={t("Чей вишлист")}><Button aria-pressed={own} onClick={() => { setOwner(user.id); setCategory('all'); }}>{t("Мои желания")}</Button>{members.filter(m => m.id !== user.id).map(m => <Button key={m.id} aria-pressed={owner === m.id} onClick={() => { setOwner(m.id); setCategory('all'); }}>{t("Желания ")}{m.displayName}</Button>)}</div><label className="wp-inline-field"><span className="wp-sr-only">{t("Категория")}</span><select value={category} onChange={e => setCategory(e.target.value)}><option value="all">{t("Все категории")}</option>{categories.map(c => <option key={c}>{c}</option>)}</select></label></div><div className="wp-wish-summary"><span>{t("Желаний: ")}{list.length}</span><span>{t("Стоимость желаний: ")}{money(list.reduce((s, w) => s + (w.price || 0), 0))}</span><span className="wp-badge">{own ? t("Ваши желания") : t("Можно выбрать подарок")}</span></div>{error ? <ErrorBox error={error} retry={() => void mutate()}/> : isLoading ? <Loading /> : !list.length ? <Empty title={own ? t("О чём вы мечтаете?") : t("Здесь скоро появятся желания")}><p>{own ? t("Добавьте первую идею — партнёру будет проще выбрать подарок.") : t("Партнёр ещё не добавил желания в эту категорию.")}</p></Empty> : <div className="wp-wish-grid">{list.map(w => <article className="wp-wish-card" key={w.id}><div className={'wp-wish-art wp-wish-' + (w.category.toLowerCase().includes(t("впечат")) ? 'trip' : w.category.toLowerCase().includes(t("книг")) ? 'book' : 'home')}><span aria-hidden="true">♡</span><span className="wp-badge">{w.category}</span></div><div className="wp-wish-body"><div className="wp-wish-priority"><span className={'wp-badge wp-priority-' + w.priority}>{t(priorityLabels[w.priority])}</span></div><h2>{w.title}</h2><p>{w.note}</p><strong className="wp-price">{w.price === null || w.price === undefined ? t("Цена не указана") : money(w.price)}</strong><div className="wp-wish-links">{safeLink(w.url) && <a href={safeLink(w.url)} target="_blank" rel="noopener noreferrer">{t("Открыть ссылку ↗")}</a>}<span>{w.ownerName}</span></div>{own ? <><Button onClick={() => setEditing(w)}>{t("Изменить желание")}</Button><div className="wp-private-note">{t("Подарочные планы партнёра остаются сюрпризом")}</div></> : <><ActionButton icon={w.reservation ? 'check' : 'gift'} className={w.reservation ? 'wp-reserved' : 'wp-primary'} action={async () => { await api(`/wishes/${w.id}/reservation`, w.reservation ? 'DELETE' : 'PUT', w.reservation ? undefined : { status: 'reserved' }); await mutate(); }}>{w.reservation === 'bought' ? t("Куплено · снять отметку") : w.reservation === 'reserved' ? t("В вашем резерве · снять") : t("Зарезервировать подарок")}</ActionButton>{w.reservation === 'reserved' && <ActionButton className="wp-text" action={async () => { await api(`/wishes/${w.id}/reservation`, 'PUT', { status: 'bought' }); await mutate(); }}>{t("Отметить купленным")}</ActionButton>}</>}</div></article>)}</div>}{!own && <p className="wp-footnote">{t("Ваш резерв видите только вы. Автор желания его не получает.")}</p>}{editing && <Dialog title={editing.id ? t("Изменить желание") : t("Добавить желание")} onClose={() => setEditing(null)}><form onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); const url = String(f.get('url') || '').trim(); if (url && !safeLink(url)) {
+        e.currentTarget.querySelector<HTMLInputElement>('[name=url]')?.setCustomValidity(t("Используйте ссылку http:// или https://"));
+        e.currentTarget.reportValidity();
+        return;
+    } void action.run(async () => { await api('/wishes' + (editing.id ? '/' + editing.id : ''), editing.id ? 'PATCH' : 'POST', { title: String(f.get('title')).trim(), note: f.get('note'), url: url || null, price: f.get('price') ? Number(f.get('price')) : null, category: String(f.get('category')).trim(), priority: f.get('priority') }); setEditing(null); setCategory('all'); await mutate(); }); }}><Field label={t("Что хочется?")}><input name="title" defaultValue={editing.title || ''} required maxLength={240}/></Field><Field label={t("Подсказка партнёру")}><textarea name="note" rows={3} maxLength={2000} defaultValue={editing.note || ''}/></Field><div className="wp-form-grid"><Field label={t("Категория")}><input name="category" list="wish-categories" defaultValue={editing.category || t("Другое")} required maxLength={80}/><datalist id="wish-categories">{[t("Для дома"), t("Впечатления"), t("Хобби"), t("Книги"), ...categories].map((c, i) => <option key={i} value={c}/>)}</datalist></Field><Field label={t("Приоритет")}><select name="priority" defaultValue={editing.priority || 'normal'}>{Object.entries(priorityLabels).map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}</select></Field><Field label={t("Примерная цена, ₽")}><input type="number" name="price" min="0" step="0.01" defaultValue={editing.price ?? ''}/></Field></div><Field label={t("Ссылка (необязательно)")}><input name="url" type="url" defaultValue={editing.url || ''} maxLength={2048} onInput={e => e.currentTarget.setCustomValidity('')} placeholder="https://…"/></Field>{action.error && <ErrorBox error={new Error(action.error)}/>}<Footer busy={action.busy} label={t("Сохранить желание")} onCancel={() => setEditing(null)}/>{editing.id && <ActionButton className="wp-text" icon="trash" action={async () => { if (!confirm(t("Удалить желание?")))
+        return; await api('/wishes/' + editing.id, 'DELETE'); setEditing(null); await mutate(); }}>{t("Удалить желание")}</ActionButton>}</form></Dialog>}</>;
+}

@@ -1,0 +1,303 @@
+/* LoveCloud drawn desk. Authored vector stationery; only the berry workspace. */
+body[data-theme=berry]{--bg:#fbd8e7;--surface:#fffdf4;--surface-alt:#fff0f5;--ink:#71364f;--muted:#94667b;--accent:#ca3970;--accent-soft:#f8c3d9;--line:#dbadc0;--radius:5px;--font:'Golos Text',sans-serif;--shadow:3px 4px 0 #ba73951a;background-color:#fbd8e7;background-image:radial-gradient(#d8a5ba 1px,transparent 1px),linear-gradient(90deg,transparent 49%,#fff8fc30 49%,#fff8fc30 51%,transparent 51%),linear-gradient(transparent 49%,#fff8fc30 49%,#fff8fc30 51%,transparent 51%);background-size:12px 12px,72px 72px,72px 72px;color:var(--ink)}
+body[data-theme=berry] .shell-app{grid-template-columns:198px minmax(0,1fr);grid-template-rows:86px minmax(0,1fr) 29px;isolation:auto}
+body[data-theme=berry] .shell-layout{grid-template-columns:minmax(0,1fr) 266px;overflow:hidden;gap:5px;padding-right:16px}
+body[data-theme=berry] .shell-main{padding:15px 26px 50px;background:transparent;position:relative}
+body[data-theme=berry] .shell-sidebar{background:transparent;border:0;padding:23px 7px 12px 15px;overflow-x:hidden;scrollbar-color:#dca6be transparent}
+body[data-theme=berry] .shell-sidebar>.shell-brand{color:#9e315e;font-family:'Caveat',cursive;font-size:36px;letter-spacing:-1.2px;margin:0 0 19px;padding:0 3px;gap:6px;transform:rotate(-3deg)}
+body[data-theme=berry] .shell-brand small{font-family:'Golos Text',sans-serif;color:#ac5d80;font-size:8px;letter-spacing:.1px;margin-top:4px;font-weight:500}
+body[data-theme=berry] .shell-brand-mark{width:38px;height:43px;background:url('/illustrations/strawberry-sticker.svg') center/contain no-repeat}
+body[data-theme=berry] .shell-brand-mark>svg,body[data-theme=berry] .shell-brand-mark>i{display:none}
+body[data-theme=berry] .shell-space-name{display:none}
+body[data-theme=berry] .shell-actions{margin:0 5px 21px 0;gap:8px;padding:0;transform:rotate(-1deg)}
+body[data-theme=berry] .shell-actions button{height:38px;border:1.5px solid #b86c8b!important;border-radius:5px 8px 4px 6px!important;box-shadow:2px 3px 0 #d093b13d}
+body[data-theme=berry] .shell-create{background:#e55389;color:#fff8ed;font-family:'Caveat',cursive;font-size:23px;font-weight:700;gap:6px}
+body[data-theme=berry] .shell-upload{color:#9e5272;background:#fff8df;transform:rotate(4deg)}
+body[data-theme=berry] .shell-nav-group{gap:5px;padding:1px 4px 0 0}
+body[data-theme=berry] .shell-sidebar .shell-nav-item{background-color:#fff4da;background-image:url('/illustrations/nav-pocket.svg');background-size:100% 100%;border:0;border-radius:0;clip-path:polygon(2% 10%,19% 3%,40% 7%,63% 3%,99% 9%,97% 91%,2% 97%);min-height:38px;padding:7px 10px 7px 13px;font-family:'Caveat',cursive;font-size:23px;font-weight:600;color:#8f5370;gap:8px;box-shadow:none;line-height:1.08;transform:rotate(-1deg);width:100%;transition:translate .17s}
+body[data-theme=berry] .shell-sidebar .shell-nav-item:hover{translate:3px 0;color:#9b315c;background-color:#fff7e5}
+body[data-theme=berry] .shell-sidebar .shell-nav-item>svg{width:18px;height:18px;stroke-width:1.55;rotate:-6deg}
+body[data-theme=berry] .shell-sidebar .shell-nav-item[data-nav=cloud]{background-color:#f7b7d1;transform:rotate(-2deg)}
+body[data-theme=berry] .shell-sidebar .shell-nav-item[data-nav=recent]{background-color:#f9edb6;transform:rotate(.6deg);width:96%;margin-left:3px}
+body[data-theme=berry] .shell-sidebar .shell-nav-item[data-nav=favorites]{background-color:#e2d2f4;transform:rotate(-.8deg);width:98%}
+body[data-theme=berry] .shell-sidebar .shell-nav-item[data-nav=albums]{background-color:#d5eaf4;transform:rotate(1.3deg);margin-left:3px;width:96%}
+body[data-theme=berry] .shell-sidebar .shell-nav-item[data-nav=feed]{background-color:#f5cfdf;transform:rotate(-1.2deg)}
+body[data-theme=berry] .shell-sidebar .shell-nav-item[data-nav=messages]{background-color:#fff3cd;transform:rotate(1deg);width:97%;margin-left:3px}
+body[data-theme=berry] .shell-sidebar .shell-nav-item[data-nav=planner]{background-color:#deedb9;transform:rotate(-1deg);width:99%}
+body[data-theme=berry] .shell-sidebar .shell-nav-item[data-nav=wishes]{background-color:#e7d7f4;transform:rotate(1.3deg);width:97%;margin-left:3px}
+body[data-theme=berry] .shell-sidebar .shell-nav-item[data-nav=vault]{background-color:#f7d5c7;transform:rotate(-.7deg)}
+body[data-theme=berry] .shell-sidebar .shell-nav-item.is-active,body[data-theme=berry] .shell-sidebar .shell-nav-item[aria-current=page]{color:#a12f5f;font-weight:700;filter:drop-shadow(1px 2px 0 #b76c8d2b)}
+body[data-theme=berry] .shell-nav-item.is-active::after{content:'♡';position:absolute;right:9px;top:7px;font-family:'Caveat',cursive;font-size:24px;rotate:14deg;color:#d04179;line-height:1}
+body[data-theme=berry] .shell-sidebar .shell-nav-label{font:19px/1.1 'Caveat',cursive;padding:13px 10px 10px;color:#a26483}
+body[data-theme=berry] .shell-sidebar .shell-nav-label>span{color:#c2789a;font-size:20px}
+body[data-theme=berry] .shell-sidebar .shell-unread{background:#d25989;width:4px;height:4px;right:6px}
+body[data-theme=berry] .shell-tree-section{margin:20px 6px 13px 0;padding:12px 9px 9px;background:#fff9e9;border:1px solid #c693aa;box-shadow:2px 3px 0 #d3a1bb33;transform:rotate(-1.3deg);flex:1 1 122px;min-height:95px;border-radius:2px 4px 3px 1px;position:relative}
+body[data-theme=berry] .shell-tree-section::before{content:'';position:absolute;top:-8px;left:52px;width:56px;height:15px;background:#ebc19bbb;rotate:5deg;clip-path:polygon(2% 2%,100% 0,97% 100%,0 95%)}
+body[data-theme=berry] .shell-sidebar .shell-tree-label{font:20px/1 'Caveat',cursive;color:#9a657d;padding:0 3px 9px}
+body[data-theme=berry] .shell-sidebar [data-folder-tree]{--ink:#8a526b;--muted:#9d7587;--accent:#a94371;--accent-soft:#f6dce7;--surface-alt:#fcecf1;--line:#e0b7c8;color:#9a667e;max-height:130px}
+body[data-theme=berry] .shell-sidebar [data-folder-tree] a,body[data-theme=berry] .shell-sidebar [data-folder-tree] button{color:#925f76;font-size:9px;padding:5px 2px;min-height:27px}
+body[data-theme=berry] .shell-sidebar .shell-bottom-nav{border:0;padding:0;margin-top:0;gap:4px}
+body[data-theme=berry] .shell-sidebar .shell-bottom-nav .shell-nav-item{min-height:30px;font-size:19px;background-color:#fbe9f1;transform:none;width:96%;padding-top:4px;padding-bottom:4px}
+body[data-theme=berry] .shell-sidebar .shell-bottom-nav .shell-nav-item>svg{width:15px;height:15px}
+body[data-theme=berry] .shell-sidebar .shell-storage{padding:14px 12px 6px 3px;color:#9b627e}
+body[data-theme=berry] .shell-sidebar .shell-storage strong,body[data-theme=berry] .shell-sidebar .shell-storage p,body[data-theme=berry] .shell-sidebar .shell-storage p>span,body[data-theme=berry] .shell-sidebar .shell-storage>div:first-child>span{color:#9b627e}
+body[data-theme=berry] .shell-sidebar .shell-storage svg{stroke:#b16f8e}
+body[data-theme=berry] .shell-sidebar .shell-storage-track{height:6px;border:1px solid #c692aa;background:#f8e8f0;rotate:-1deg;border-radius:5px 3px 6px 3px}
+body[data-theme=berry] .shell-sidebar .shell-storage-track>i{background:#db7aa3;border-radius:5px 8px 4px 3px}
+body[data-theme=berry] .shell-sidebar .shell-all-designs{font-size:8px;color:#ad7791;padding:8px 3px 2px}
+body[data-theme=berry] .shell-topbar{background:transparent;border:0;gap:22px;padding:8px 30px 0 20px}
+body[data-theme=berry] .shell-topbar-title{display:none}
+body[data-theme=berry] .shell-topbar .shell-search{height:61px;max-width:780px;border:0;border-radius:0;background:transparent url('/illustrations/search-paper.svg') center/100% 100% no-repeat;padding:5px 26px 0;transform:rotate(-.65deg);gap:14px;box-shadow:0 3px 0 #ce97b10d}
+body[data-theme=berry] .shell-search>svg{stroke:#aa6a87;width:19px;height:19px}
+body[data-theme=berry] .shell-topbar .shell-search input{font:13px 'Golos Text',sans-serif;color:#8a506c}
+body[data-theme=berry] .shell-topbar .shell-search input::placeholder{font:25px 'Caveat',cursive;color:#b07b92}
+body[data-theme=berry] .shell-search-hint{border:0;font:16px 'Caveat',cursive;color:#b9829a;padding:0;display:block}
+body[data-theme=berry] .shell-pair{background:#fff8df;border:1px solid #bd8b9f;border-radius:7px 5px 10px 4px;box-shadow:2px 3px 0 #d297b03b;padding:8px 11px;transform:rotate(2deg);gap:7px;margin-top:2px}
+body[data-theme=berry] .shell-pair strong{font:20px/.9 'Caveat',cursive;font-weight:700;color:#a5627d}
+body[data-theme=berry] .shell-pair small{font-size:7px;color:#ac8194;margin-top:5px}
+body[data-theme=berry] .shell-avatars>span{border:1px solid #c783a0;border-radius:45% 51% 42% 48%;background:#f8c3d9;width:29px;height:29px;font:17px 'Caveat',cursive;color:#a35978}
+body[data-theme=berry] .shell-avatars>span+span{background:#dce7bd;border-color:#a5b783;rotate:9deg;color:#789055}
+body[data-theme=berry] .shell-details{margin:26px 5px 23px 4px;padding:31px 22px 25px 29px;background-color:#fffbea;background-image:linear-gradient(90deg,transparent 22px,#edb9c9 22px,#edb9c9 23px,transparent 23px),repeating-linear-gradient(transparent 0,transparent 26px,#d9d9c74d 26px,#d9d9c74d 27px);border:1.5px solid #c692a9;border-radius:6px 9px 4px 7px;box-shadow:4px 4px 0 #ead4d8,5px 6px 0 #bd869e;transform:rotate(.9deg);position:relative;overflow:auto}
+body[data-theme=berry] .shell-details::before{content:'';position:absolute;left:35%;top:5px;width:85px;height:17px;background:#e5b7c0a6;transform:rotate(-5deg);clip-path:polygon(0 8%,100% 0,97% 95%,3% 100%);pointer-events:none}
+body[data-theme=berry] .wp-details-title h2{font:29px/1 'Caveat',cursive;font-weight:600;color:#a76280}
+body[data-theme=berry] .wp-pair-card{padding:12px 0 17px}
+body[data-theme=berry] .wp-pair-card h3{font:28px/1 'Caveat',cursive;color:#aa6582}
+body[data-theme=berry] .wp-pair-avatars .wp-avatar{border:1px solid #ba8caa;border-radius:42% 49% 45% 52%;background:#f4c3d7;font:26px 'Caveat',cursive;rotate:-7deg}
+body[data-theme=berry] .wp-pair-avatars .wp-avatar:nth-child(2){rotate:9deg;background:#e5d5f0;border-color:#bda0ca}
+body[data-theme=berry] .wp-overview-stats{border:0;gap:10px;padding:10px 0 16px}
+body[data-theme=berry] .wp-overview-stats>div{border:1px solid #d8b4bd;background:#fff6d6;border-radius:45% 41% 49% 44%;padding:9px 2px;rotate:-4deg}
+body[data-theme=berry] .wp-overview-stats>div:nth-child(2){background:#e8dcf5;border-radius:49% 46% 40% 42%;rotate:4deg}
+body[data-theme=berry] .wp-overview-stats>div:nth-child(3){background:#e7edc8;rotate:-2deg}
+body[data-theme=berry] .wp-overview-stats strong{font:30px/.9 'Caveat',cursive;font-weight:700;color:#9b657d}
+body[data-theme=berry] .wp-overview-stats span{font-size:8px}
+body[data-theme=berry] .wp-small-heading{font:25px/1.1 'Caveat',cursive;color:#a0637f;margin:17px 0 13px}
+body[data-theme=berry] .wp-mini-tasks{gap:12px}
+body[data-theme=berry] .wp-mini-tasks a{font-size:10px;line-height:1.7}
+body[data-theme=berry] .wp-mini-tasks small{font-size:8px;margin-top:1px}
+body[data-theme=berry] .wp-mini-check{border:1px solid #caa0af;border-radius:2px 4px 2px 3px;rotate:-5deg}
+body[data-theme=berry] .wp-demo-note{background:#f7dfec;border:1px dashed #c79bae;border-radius:1px 4px 1px 2px;transform:rotate(-2deg);font-size:9px;margin-top:22px;line-height:1.8;box-shadow:2px 2px 0 #c79bae15}
+body[data-theme=berry] .wp-detail-event{font-size:10px}
+body[data-theme=berry] .wp-detail-preview{padding:7px;background:white;border:1px solid #caa1af;border-radius:0;transform:rotate(-3deg);height:160px}
+body[data-theme=berry] .wp-detail-name{font:25px/1.1 'Caveat',cursive}
+body[data-theme=berry] .wp-property-list>div{border-bottom:1px dotted #d2a9b9}
+body[data-theme=berry] .shell-statusbar{background:#f7e3eb;border-top:1px dashed #d5a2b9;color:#a5778d;font-size:8px;padding:0 15px;gap:12px}
+body[data-theme=berry] .shell-motion-toggle{border:1px solid #cc96b0;border-radius:3px 7px 2px 5px;background:#fff7df;font-family:'Caveat',cursive;font-size:15px;padding:0 9px;rotate:-1deg;color:#af6689}
+body[data-theme=berry] .desk-scenery{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+body[data-theme=berry] .desk-scenery img{position:absolute}
+body[data-theme=berry] .desk-flower{width:90px;right:13px;top:64px;rotate:19deg;opacity:.9}
+body[data-theme=berry] .desk-pencil{width:42px;right:3px;bottom:80px;rotate:15deg;opacity:.7}
+body[data-theme=berry] .desk-doodles{width:135px;left:39%;bottom:30px;rotate:-6deg;opacity:.65}
+body[data-theme=berry] .shell-heartfield>span{width:70px!important;height:70px!important;font-size:0!important;color:transparent!important;background:url('/illustrations/flying-heart.svg') center/contain no-repeat;opacity:.67}
+body[data-theme=berry] .shell-heartfield>span:nth-child(2n){width:45px!important;height:45px!important;opacity:.46}
+
+/* The paper objects on the real cloud screen. */
+body[data-theme=berry] .wp-breadcrumbs{font:19px/1.2 'Caveat',cursive;color:#ad6b8b;margin:0 0 9px;padding-left:2px}
+body[data-theme=berry] .wp-page-heading{margin:3px 0 16px;gap:15px;align-items:center}
+body[data-theme=berry] .wp-page-heading h1{font:700 42px/1 'Caveat',cursive;letter-spacing:-.6px;color:#a63e6c;margin:0 0 7px;rotate:-1.2deg;display:inline-block}
+body[data-theme=berry] .wp-page-heading p{font-size:10px;color:#a3738b}
+body[data-theme=berry] .wp-heading-actions{gap:7px}
+body[data-theme=berry] .wp-button{border:1px solid #c891aa;border-radius:4px 7px 3px 6px;box-shadow:1px 2px 0 #c789a21c;background:#fffaf0;color:#945672;font-size:10px;font-weight:500;min-height:35px}
+body[data-theme=berry] .wp-button:hover{background:#ffe6f0;border-color:#ba7095}
+body[data-theme=berry] .wp-primary{background:#e3548a;color:#fff8e9;border-color:#ba4c78;box-shadow:2px 3px 0 #c27c9c42;font-weight:600}
+body[data-theme=berry] .wp-primary:hover{background:#d63c78;color:white;border-color:#b74472}
+body[data-theme=berry] .wp-icon-button{box-shadow:none;background:transparent;border-color:transparent;border-radius:3px 5px 3px 4px}
+body[data-theme=berry] .wp-text{background:transparent;border-color:transparent;box-shadow:none}
+body[data-theme=berry] .wp-toolbar{border:0;background:#fff9e8;border:1px solid #d3a4b4;border-radius:2px 6px 3px 5px;box-shadow:2px 2px 0 #d4a4bc25;padding:8px 12px;margin:0 4px 17px 0;transform:rotate(.35deg);gap:8px;position:relative}
+body[data-theme=berry] .wp-toolbar::before{content:'';position:absolute;top:-8px;left:46%;height:15px;width:65px;background:#d7c2e2aa;rotate:-6deg;clip-path:polygon(0 4%,100% 0,98% 100%,2% 96%);pointer-events:none}
+body[data-theme=berry] .wp-inline-field select,body[data-theme=berry] .wp-task select{border-color:#dfbdca;background:#fffaf5;border-radius:3px 6px 3px 4px;min-height:32px;font-size:10px;color:#9b6980}
+body[data-theme=berry] .wp-result-count{font-size:9px;color:#aa8195}
+body[data-theme=berry] .wp-segment{background:#f7e2ec;border:1px solid #d2a5b9;border-radius:5px 3px 7px 4px;box-shadow:1px 2px 0 #bc86a21a}
+body[data-theme=berry] .wp-segment .wp-button{font:18px/1 'Caveat',cursive;min-height:29px;border-radius:4px 2px 5px 3px;padding:5px 12px;background:transparent;box-shadow:none}
+body[data-theme=berry] .wp-segment .wp-icon-button{width:30px;min-width:30px;height:30px;padding:6px}
+body[data-theme=berry] .wp-segment .wp-button[aria-pressed=true]{background:#fff9e9;box-shadow:1px 1px 0 #b7809b3d;color:#aa4a75}
+body[data-theme=berry] .wp-section-label{margin:13px 0 4px;padding:0 5px}
+body[data-theme=berry] .wp-section-label h2{font:26px/1 'Caveat',cursive;font-weight:600;color:#a45f7d;rotate:-1.7deg}
+body[data-theme=berry] .wp-section-label>span{font:19px 'Caveat',cursive;color:#b07f95}
+body[data-theme=berry] .wp-badge{font-size:8px;font-weight:500;border:1px dashed #cba0b3;border-radius:2px 4px 2px 3px;background:#fff6e1;padding:4px 7px;color:#a37288}
+body[data-theme=berry] .wp-folder-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 18px;padding:6px 1px 14px;margin:0 0 2px}
+body[data-theme=berry] .wp-folder-card{position:relative;min-height:140px;display:flex;align-items:flex-end;justify-content:center;padding:77px 18px 18px;border:0;border-radius:0;background:transparent url('/illustrations/envelope-travel.svg') center/100% 100% no-repeat;box-shadow:none;transform:rotate(-2.8deg);isolation:isolate;transition:translate .2s;overflow:visible;text-align:center;gap:0}
+body[data-theme=berry] .wp-folder-card:hover{background-color:transparent;translate:0 -4px;border-color:transparent;filter:drop-shadow(1px 3px 0 #b47d9b15)}
+body[data-theme=berry] .wp-folder-card>svg{display:none}
+body[data-theme=berry] .wp-folder-card>div{flex:1;position:relative;z-index:1}
+body[data-theme=berry] .wp-folder-card strong{font:600 23px/1 'Caveat',cursive;color:#936241;overflow-wrap:anywhere;max-width:100%;margin:0 auto}
+body[data-theme=berry] .wp-folder-card small{font-size:8px;line-height:1.5;color:#a7866b;margin-top:5px}
+body[data-theme=berry] .wp-folder-card:nth-child(2){background-image:url('/illustrations/envelope-home.svg');transform:rotate(2deg);translate:0 5px}
+body[data-theme=berry] .wp-folder-card:nth-child(3){background-image:url('/illustrations/envelope-photos.svg');transform:rotate(-1deg);translate:0 -3px}
+body[data-theme=berry] .wp-folder-card:nth-child(4){background-image:url('/illustrations/envelope-papers.svg');transform:rotate(1.5deg);translate:0 1px}
+body[data-theme=berry] .wp-folder-card:nth-child(5){background-image:url('/illustrations/envelope-celebrations.svg');transform:rotate(-2deg);translate:0 4px}
+body[data-theme=berry] .wp-folder-card:nth-child(6){background-image:url('/illustrations/envelope-inspiration.svg');transform:rotate(2.4deg);translate:0 -2px}
+body[data-theme=berry] .wp-folder-card:nth-child(2) strong{color:#836097}body[data-theme=berry] .wp-folder-card:nth-child(3) strong{color:#a3577d}body[data-theme=berry] .wp-folder-card:nth-child(4) strong{color:#648597}body[data-theme=berry] .wp-folder-card:nth-child(5) strong{color:#ad7164}body[data-theme=berry] .wp-folder-card:nth-child(6) strong{color:#7f9258}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-grid{grid-template-columns:repeat(12,minmax(0,1fr));gap:29px 22px;align-items:start;padding:18px 9px 45px 5px;grid-auto-flow:row dense}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card{grid-column:span 4;border:1px solid #c89caa;border-radius:1px 3px 1px 2px;box-shadow:3px 4px 0 #c79ab026,0 7px 9px #9c55730b;background:#fffdf5;padding:9px 9px 0;transform:rotate(-2deg);overflow:visible;min-width:0;position:relative;transition:translate .2s}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:first-child{grid-column:span 5;transform:rotate(-3deg)}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:nth-child(2){grid-column:span 3;transform:rotate(2.5deg);margin-top:14px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:nth-child(3){transform:rotate(1.2deg);margin-top:0}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:nth-child(4n){transform:rotate(2.3deg);margin-top:7px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:nth-child(5n){transform:rotate(-1deg);margin-top:19px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card::before{content:'';position:absolute;z-index:3;top:-12px;left:calc(50% - 36px);width:73px;height:24px;background:#e6c7a5b8;rotate:7deg;clip-path:polygon(1% 4%,98% 0,100% 94%,0 100%,3% 76%,0 49%,3% 27%);pointer-events:none}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:nth-child(2n)::before{background:#d9c6e6ba;rotate:-5deg;width:62px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:nth-child(3n)::before{background:#efbdd2ad;rotate:-3deg}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:hover{translate:0 -4px;box-shadow:3px 5px 0 #c79ab02b}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card.is-selected{border:2px solid #cc5987;box-shadow:3px 4px 0 #d48ca4,0 0 0 4px #ffeef69c}
+body[data-theme=berry][data-desk-mode=desk] .wp-thumbnail{height:170px;border-radius:0;overflow:hidden;background:#f6dfeb}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:first-child .wp-thumbnail{height:198px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:nth-child(3) .wp-thumbnail{height:174px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:has(.wp-file-glyph){background:#fffbed;background-image:repeating-linear-gradient(transparent 0,transparent 25px,#dfd1c84a 25px,#dfd1c84a 26px);padding:8px 8px 0;border-color:#cbb5a5;box-shadow:3px 4px 0 #cbb5a52a}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card:has(.wp-file-glyph) .wp-thumbnail{height:182px;background:transparent}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-glyph{background:transparent!important;padding:35px 12px 12px;gap:12px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-glyph svg{stroke-width:1.25;width:49px;height:49px;rotate:-6deg}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-glyph>span{font:700 24px/1 'Caveat',cursive;letter-spacing:1px;border:1px dashed currentColor;padding:4px 13px;rotate:6deg;opacity:.7}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card-body{padding:11px 4px 7px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-name{font:600 22px/1.05 'Caveat',cursive;color:#9d5e7e;min-height:0;max-width:100%;text-decoration:none}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-name:hover{text-decoration:underline;background:none}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-subline{font-size:8px;margin-top:7px;gap:4px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-owner{font-size:8px;margin-top:9px;padding-top:4px;border-top:1px dashed #dfbfcc;min-height:31px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-owner>.wp-button{width:25px;min-width:25px;height:26px;min-height:26px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card-top{top:11px;left:12px;right:12px}
+body[data-theme=berry][data-desk-mode=desk] .wp-file-card-top .wp-icon-button,body[data-theme=berry][data-desk-mode=desk] .wp-file-card-top .wp-check-target{background:#fffdf0eb;border:1px solid #d1abb9;border-radius:4px 7px 3px 6px;box-shadow:1px 2px 0 #be8da326;width:31px;min-width:31px;height:31px;min-height:31px}
+body[data-theme=berry] .wp-avatar{border:1px solid #c18ca4;border-radius:46% 43% 50% 40%;font-family:'Caveat',cursive;font-size:18px;background:#f6c7da}
+body[data-theme=berry] .wp-avatar-small{font-size:13px;width:20px;height:20px;border-color:#d8a5bd}
+body[data-theme=berry] .wp-selection-bar{border:1.5px dashed #ba7294;background:#fff2c8;border-radius:2px 6px 3px 5px;box-shadow:2px 3px 0 #c48b9d21;margin-top:8px;padding:12px 14px;rotate:-.4deg;font-size:11px}
+body[data-theme=berry] .wp-desk-switch{display:flex;align-items:center;gap:3px;background:#fff7dc;border:1.5px solid #b97f99;border-radius:5px 3px 7px 4px;padding:3px;box-shadow:2px 2px 0 #bd7d992b;rotate:-1deg}
+body[data-theme=berry] .wp-desk-switch .wp-button{font:600 21px/1 'Caveat',cursive;border:0;background:transparent;box-shadow:none;min-height:32px;padding:6px 13px;color:#ad7c92}
+body[data-theme=berry] .wp-desk-switch .wp-button[aria-pressed=true]{background:#f6bcd5;color:#a84270;border-radius:3px 6px 2px 5px;box-shadow:1px 1px 0 #c387a1}
+body[data-theme=berry] .wp-pocket-button{position:fixed;right:292px;bottom:45px;z-index:55;width:91px;height:99px;background:transparent url('/illustrations/strawberry-sticker.svg') center/contain no-repeat;border:0;box-shadow:none!important;border-radius:0;font-size:0;color:transparent!important;rotate:9deg;filter:drop-shadow(2px 5px 0 #a65b7a24);transition:rotate .2s}
+body[data-theme=berry] .wp-pocket-button:hover{background-color:transparent;rotate:0deg}
+body[data-theme=berry] .wp-pocket-button>*,body[data-theme=berry] .wp-pocket-button svg{display:none}
+body[data-theme=berry] .wp-pocket-button::after{content:attr(data-label);position:absolute;bottom:-3px;left:-27px;white-space:nowrap;font:600 20px/1 'Caveat',cursive;color:#ac557b;background:#fff6d6;border:1px solid #bf8c9e;border-radius:2px 7px 3px 4px;box-shadow:1px 2px 0 #ab779533;padding:6px 11px;rotate:-14deg}
+body[data-theme=berry] .wp-pocket-menu{position:fixed;right:291px;bottom:165px;z-index:60;min-width:220px;padding:21px 17px 15px;background:#fff9e4;border:1.5px solid #bc849d;border-radius:4px 7px 3px 6px;box-shadow:4px 5px 0 #bc849d33;rotate:-1deg}
+body[data-theme=berry] .wp-pocket-menu::before{content:'';position:absolute;top:-9px;left:80px;width:69px;height:19px;rotate:4deg;background:#ddbbd0a6;clip-path:polygon(0 3%,100% 0,96% 100%,2% 97%)}
+body[data-theme=berry] .wp-pocket-menu h2,body[data-theme=berry] .wp-pocket-menu strong{font:26px 'Caveat',cursive;color:#a56580}
+body[data-theme=berry] .wp-pocket-menu button,body[data-theme=berry] .wp-pocket-menu a{font-family:'Caveat',cursive;font-size:23px;color:#a2617e;min-height:39px;background:transparent;border:0;border-bottom:1px dashed #d9b3c3;box-shadow:none;border-radius:0;padding:7px 5px;display:flex;gap:10px;align-items:center}
+body[data-theme=berry] .wp-pocket-menu button:hover{background:#f8dce9}
+body[data-theme=berry] .wp-pocket-menu svg{width:19px;height:19px;stroke-width:1.5}
+
+/* A wall of notes, a board of tasks, and collections of wishes. */
+body[data-theme=berry] .wp-desk-switch{width:fit-content;max-width:100%;margin-bottom:15px}
+body[data-theme=berry] .wp-desk-hint{font:18px/1.2 'Caveat',cursive;color:#b57d96;margin-left:10px;padding-right:9px}
+body[data-theme=berry] .wp-social-layout{grid-template-columns:minmax(0,1fr) 175px;gap:22px;align-items:start}
+body[data-theme=berry] .wp-social-notice{font-size:9px;line-height:1.8;color:#a5778c;max-width:80ch;padding-left:5px}
+body[data-theme=berry] .wp-social-compose{position:relative;background-color:#fffcef;background-image:repeating-linear-gradient(transparent 0,transparent 27px,#e9cfd64d 27px,#e9cfd64d 28px);border:1px solid #c99cae;border-radius:3px 7px 2px 5px;box-shadow:3px 4px 0 #d3a7bd46;padding:25px 23px 20px;margin:12px 3px 30px 2px;transform:rotate(-.6deg)}
+body[data-theme=berry] .wp-social-compose::before,body[data-theme=berry] .wp-memory::before{content:'';position:absolute;top:-10px;left:38%;width:80px;height:22px;background:#e1c1d3a6;rotate:4deg;clip-path:polygon(1% 2%,100% 0,98% 100%,0 98%);pointer-events:none}
+body[data-theme=berry] .wp-social-compose label[for=wp-post-text]{font:600 27px/1 'Caveat',cursive;color:#ad6083}
+body[data-theme=berry] .wp-social-compose textarea{font-family:'Golos Text',sans-serif;font-size:12px;line-height:1.9;min-height:105px;background:transparent;border-color:#dbc0c8;border-radius:0;color:#8c5c73}
+body[data-theme=berry] .wp-social-compose textarea::placeholder{color:#b2889b}
+body[data-theme=berry] .wp-social-compose-footer{border-top:1px dashed #d8b0c2;padding-top:11px}
+body[data-theme=berry] .wp-social-post{position:relative;background:#fffdf3;border:1px solid #cda1b1;border-radius:4px 2px 6px 3px;box-shadow:3px 4px 0 #bc8aa12b;padding:23px;margin:0 5px 28px;transform:rotate(.65deg)}
+body[data-theme=berry] .wp-social-post:nth-child(2n){background:#fff4d5;border-color:#d3b58d;transform:rotate(-1deg);margin-left:14px;margin-right:0}
+body[data-theme=berry] .wp-social-post:nth-child(3n){background:#ecdfef;border-color:#bf99c1;transform:rotate(.6deg)}
+body[data-theme=berry] .wp-social-post::before{content:'';position:absolute;width:45px;height:16px;left:10px;top:-5px;background:#f2c2d4b3;rotate:-19deg;pointer-events:none}
+body[data-theme=berry] .wp-social-author strong{font:600 24px/1 'Caveat',cursive;color:#a15a7b}
+body[data-theme=berry] .wp-social-author small{font-size:8px;margin-top:4px}
+body[data-theme=berry] .wp-social-post>p{font-size:12px;line-height:1.9;color:#94647b}
+body[data-theme=berry] .wp-social-media{gap:13px;margin:18px 3px}
+body[data-theme=berry] .wp-social-media>button{padding:6px;background:white;border:1px solid #cbacb7;border-radius:0;transform:rotate(-2deg);height:190px;box-shadow:2px 3px 0 #c295ab20}
+body[data-theme=berry] .wp-social-media>button:nth-child(2){transform:rotate(2deg);translate:0 5px}
+body[data-theme=berry] .wp-social-meta{border-top:1px dashed #d8b4c1;padding-top:10px;gap:6px}
+body[data-theme=berry] .wp-social-meta>.wp-button{background:transparent;border-color:transparent;box-shadow:none;font-size:10px}
+body[data-theme=berry] .wp-pinned{font:600 20px/1 'Caveat',cursive;color:#b16e84;margin-bottom:15px}
+body[data-theme=berry] .wp-replies{border-left:2px solid #dbaec3;background:#fffaf063;margin:10px 0 0 11px;border-radius:0;padding:12px}
+body[data-theme=berry] .wp-reply-form input{background:#fffdf0;border:1px solid #cf9caf;border-radius:3px 6px 2px 4px;font-size:11px}
+body[data-theme=berry] .wp-reply strong{font:600 22px 'Caveat',cursive}
+body[data-theme=berry] .wp-social-aside,body[data-theme=berry] .wp-feed-summary{background:#e7d8f3;border:1px solid #bda3ca;border-radius:3px 6px 2px 4px;transform:rotate(2deg);box-shadow:3px 4px 0 #bda3ca2b;padding:20px 17px;position:relative}
+body[data-theme=berry] .wp-social-aside h2,body[data-theme=berry] .wp-feed-summary h2,body[data-theme=berry] .wp-feed-summary h3{font:600 27px/1 'Caveat',cursive;color:#9272a7}
+body[data-theme=berry] .wp-social-aside p{font-size:10px}
+body[data-theme=berry] .wp-social-aside a{font:20px/1.1 'Caveat',cursive;color:#9a658c}
+body[data-theme=berry] .wp-memory{position:relative;border:1px solid #cfadb8;border-radius:2px 5px 1px 3px;overflow:visible;box-shadow:3px 5px 0 #c29bad29;margin:15px 3px 30px;transform:rotate(-.8deg);background:#fffdf4;padding:22px}
+body[data-theme=berry] .wp-memory:nth-child(2n){background:#fff5dc;transform:rotate(.9deg)}
+body[data-theme=berry] .wp-memory h2{font:600 31px/1.1 'Caveat',cursive;color:#a5607f}
+body[data-theme=berry] .wp-memory p{font-size:12px;color:#986f80}
+body[data-theme=berry] .wp-memory-photo{padding:7px 7px 23px;background:white;border:1px solid #d1adb9;border-radius:0;box-shadow:2px 3px 0 #c9a4b125;transform:rotate(1.5deg);height:285px}
+body[data-theme=berry] .wp-memory-photo .wp-file-image{height:100%}
+body[data-theme=berry] .wp-album-grid{gap:27px 22px;padding:16px 8px}
+body[data-theme=berry] .wp-album-card{border:1px solid #caa1b3;border-radius:1px 4px 2px 3px;overflow:visible;background:#fffdf1;padding:9px;box-shadow:3px 4px 0 #bc8da425;transform:rotate(-2deg);position:relative}
+body[data-theme=berry] .wp-album-card:nth-child(2n){transform:rotate(2deg);background:#fff4d6;margin-top:10px}
+body[data-theme=berry] .wp-album-card::before{content:'';position:absolute;top:-10px;left:35%;width:70px;height:22px;background:#dbbfd8aa;rotate:6deg;pointer-events:none}
+body[data-theme=berry] .wp-album-card>img{height:170px;border-radius:0}
+body[data-theme=berry] .wp-album-card>div{padding:17px 6px 8px}
+body[data-theme=berry] .wp-album-card h2{font:600 26px/1 'Caveat',cursive;color:#a66a81}
+body[data-theme=berry] .wp-planner-summary{background:#fff6cf;box-shadow:2px 2px 0 #c19d8121;border:1px solid #ceb58b;border-radius:3px 6px 1px 4px;padding:12px 17px;rotate:.6deg;font-size:10px;margin:10px 2px 22px}
+body[data-theme=berry] .wp-planner-summary strong{font:700 30px/1 'Caveat',cursive;color:#a67769}
+body[data-theme=berry] .wp-task-list{gap:23px 21px;padding:10px 5px 30px}
+body[data-theme=berry] .wp-task{position:relative;background:#fff5c9;border:1px solid #c7ad80;border-radius:1px 3px 2px 4px;box-shadow:3px 5px 0 #b7a18a21;padding:19px 18px 15px;transform:rotate(-1.2deg)}
+body[data-theme=berry] .wp-task:nth-child(3n+2){background:#e6d8f5;border-color:#b8a0c9;transform:rotate(1.1deg)}
+body[data-theme=berry] .wp-task:nth-child(3n){background:#e4edc7;border-color:#b4c28d;transform:rotate(.5deg)}
+body[data-theme=berry] .wp-task::before{content:'';position:absolute;top:-9px;left:42%;width:54px;height:18px;background:#ecc3d4aa;rotate:6deg;pointer-events:none}
+body[data-theme=berry] .wp-task-top h3{font:600 25px/1.05 'Caveat',cursive;margin:5px 0 14px;color:#99667c}
+body[data-theme=berry] .wp-task-top .wp-icon-button{border:1px solid #c9a7b0;border-radius:45% 48% 43% 51%;background:#fffdf080;min-width:26px;width:26px;height:26px;min-height:26px;margin-right:5px}
+body[data-theme=berry] .wp-task.is-done{opacity:.76}
+body[data-theme=berry] .wp-task-meta .wp-badge{font-size:8px;background:#fffdf57a}
+body[data-theme=berry] .wp-task-bottom>span{font-size:9px}
+body[data-theme=berry] .wp-task select{font-size:9px;background:#fffbef99;border-color:#ceb1bf;max-width:130px}
+body[data-theme=berry] .wp-task-repeat{font-size:8px;border-top:1px dashed #cbb5b2;color:#aa8192}
+body[data-theme=berry] .wp-kanban{gap:20px;padding:12px 4px}
+body[data-theme=berry] .wp-kanban-column{background:#f1d7e4;border:1px dashed #c58ba6;border-radius:6px 3px 7px 5px;padding:17px 13px}
+body[data-theme=berry] .wp-kanban-column:nth-child(2){background:#e7d9ef;border-color:#c2a2cb}
+body[data-theme=berry] .wp-kanban-column:nth-child(3){background:#e3ecc7;border-color:#aebd91}
+body[data-theme=berry] .wp-kanban-column>h2{font:600 25px/1 'Caveat',cursive;color:#a15f82;margin-bottom:23px}
+body[data-theme=berry] .wp-kanban-column .wp-task{margin-bottom:23px;padding:15px 10px}
+body[data-theme=berry] .wp-kanban-column .wp-task-top h3{font-size:23px}
+body[data-theme=berry] .wp-week-day{background:#fff8dc;border:1px solid #ceb69c;border-radius:2px 4px 1px 3px;padding:9px}
+body[data-theme=berry] .wp-week-day>h2{font:22px 'Caveat',cursive;color:#ac7b8b}
+body[data-theme=berry] .wp-week-day>h2 strong{font:700 32px/1 'Caveat',cursive;color:#a76b85}
+body[data-theme=berry] .wp-week-day .wp-task{transform:none;padding:9px;box-shadow:1px 2px 0 #c5a7ba21}
+body[data-theme=berry] .wp-week-day .wp-task-top h3{font-size:21px}
+body[data-theme=berry] .wp-wish-demo{background:#fff6df;border:1px solid #d4acba;border-radius:2px 6px 3px 5px;rotate:-.5deg;padding:12px 17px}
+body[data-theme=berry] .wp-wish-demo p{font-size:9px;line-height:1.8}
+body[data-theme=berry] .wp-wish-grid{gap:30px 26px;padding:16px 7px 30px}
+body[data-theme=berry] .wp-wish-card{background:#fffdf3;border:1px solid #c9a1b2;border-radius:1px 3px 1px 4px;padding:9px 9px 0;box-shadow:4px 5px 0 #bf91ac2b;transform:rotate(-1.8deg);overflow:visible;position:relative}
+body[data-theme=berry] .wp-wish-card:nth-child(2n){transform:rotate(1.9deg);translate:0 12px}
+body[data-theme=berry] .wp-wish-card::before{content:'';position:absolute;top:-11px;left:38%;width:75px;height:24px;background:#e6c1d3bd;rotate:7deg;z-index:2;pointer-events:none;clip-path:polygon(1% 0,100% 3%,98% 100%,0 97%)}
+body[data-theme=berry] .wp-wish-art{border-radius:0;height:140px;border:1px solid #d8bac6;background-color:#f6dfeb}
+body[data-theme=berry] .wp-wish-body{padding:17px 11px}
+body[data-theme=berry] .wp-wish-body h2{font:600 29px/1.05 'Caveat',cursive;color:#a76781}
+body[data-theme=berry] .wp-wish-body>p{font-size:11px;color:#a17a8c;line-height:1.8}
+body[data-theme=berry] .wp-price{font:700 32px/1 'Caveat',cursive;color:#a5627c}
+body[data-theme=berry] .wp-private-note{border:1px dashed #d7b2c3;border-radius:2px 5px 1px 3px;background:#f9e5ed;font-size:9px;rotate:-.5deg}
+body[data-theme=berry] .wp-vault-gate{background:#fff9df;border:1.5px solid #bf90a1;border-radius:3px 8px 2px 5px;box-shadow:4px 5px 0 #c190a33b;transform:rotate(-.8deg);position:relative}
+body[data-theme=berry] .wp-vault-gate::before{content:'';position:absolute;top:-12px;left:41%;width:100px;height:25px;background:#e4b7d0aa;rotate:6deg;pointer-events:none}
+body[data-theme=berry] .wp-vault-gate h2{font:600 32px/1 'Caveat',cursive;color:#9f6683}
+body[data-theme=berry] .wp-vault-gate>div>p{font-size:11px}
+body[data-theme=berry] .wp-lock-art{border:2px solid #bc84a0;border-radius:43% 47% 39% 52%;background:#f3bfd6;rotate:4deg}
+body[data-theme=berry] .wp-vault-gate input{background:#fffdf1;border:1px solid #c594ac;border-radius:2px 5px 1px 3px;font:30px 'Caveat',cursive;letter-spacing:10px}
+body[data-theme=berry] .wp-activity-list{background:#fff9e7;border:1px solid #c9a9b4;border-radius:2px 5px 1px 4px;box-shadow:3px 4px 0 #bb91a42b;transform:rotate(-.4deg)}
+body[data-theme=berry] .wp-activity-item{border-bottom:1px dashed #dcc0ca}
+body[data-theme=berry] .wp-activity-icon{background:#f2cee0;border:1px solid #c694b0;border-radius:7px 3px 8px 5px;rotate:-7deg}
+body[data-theme=berry] .wp-dialog{background:#fffaf0;border:1.5px solid #b87998;border-radius:4px 8px 2px 6px;box-shadow:7px 8px 0 #a96c8a36;color:#8f5472}
+body[data-theme=berry] .wp-dialog-heading h2{font:600 33px/1 'Caveat',cursive;color:#a4567b}
+body[data-theme=berry] .wp-field>span{font:600 22px 'Caveat',cursive;color:#a16b86}
+body[data-theme=berry] .wp-field input,body[data-theme=berry] .wp-field textarea,body[data-theme=berry] .wp-field select{background:#fffdf3;border:1px solid #cfa6ba;border-radius:3px 5px 2px 4px;font-size:12px;color:#95637a}
+body[data-theme=berry] .wp-envelope-files{border:1px dashed #d0acbb;background:#fff5d8;border-radius:2px 5px 3px 4px}
+body[data-theme=berry] .wp-empty{background:#fff8df;border:1.5px dashed #c59bb1;border-radius:4px 8px 2px 5px;box-shadow:3px 4px 0 #c59bb11c}
+body[data-theme=berry] .wp-empty h2{font:600 31px 'Caveat',cursive;color:#a56b85}
+
+/* Catalog is the straight, dense companion to the expressive desk. */
+body[data-theme=berry][data-desk-mode=catalog] .wp-folder-grid{gap:9px;padding-top:3px;padding-bottom:8px}
+body[data-theme=berry][data-desk-mode=catalog] .wp-folder-card{min-height:85px;padding:42px 14px 12px;transform:none!important;translate:none!important;background-size:100% 150%;background-position:center bottom}
+body[data-theme=berry][data-desk-mode=catalog] .wp-folder-card strong{font-size:20px}
+body[data-theme=berry][data-desk-mode=catalog] .wp-folder-card small{font-size:8px;margin-top:3px}
+body[data-theme=berry][data-desk-mode=catalog] .wp-file-grid{gap:12px;grid-template-columns:repeat(3,minmax(0,1fr));padding:6px 0 30px}
+body[data-theme=berry][data-desk-mode=catalog] .wp-file-card{border:1px solid #cf9eb7;border-radius:3px 6px 1px 4px;background:#fffaf1;box-shadow:1px 2px 0 #cba2b52b}
+body[data-theme=berry][data-desk-mode=catalog] .wp-file-card .wp-thumbnail{height:125px}
+body[data-theme=berry][data-desk-mode=catalog] .wp-file-name{font-size:11px}
+body[data-theme=berry][data-desk-mode=catalog] .wp-table-scroll{border:1px solid #c995ac;border-radius:2px 5px 1px 4px;background:#fffaf0;box-shadow:2px 3px 0 #c995ac2b}
+body[data-theme=berry][data-desk-mode=catalog] .wp-file-table th{background:#f5dbe7;color:#9b6680}
+body[data-theme=berry][data-desk-mode=catalog] .wp-file-table td{border-color:#ead1d9}
+
+@media(min-width:1600px){body[data-theme=berry] .shell-app{grid-template-columns:212px minmax(0,1fr)}body[data-theme=berry] .shell-layout{grid-template-columns:minmax(0,1fr) 285px;padding-right:23px}body[data-theme=berry] .shell-main{padding-left:35px;padding-right:38px}body[data-theme=berry] .wp-folder-card{min-height:155px;padding-top:86px;padding-bottom:20px}body[data-theme=berry] .wp-folder-card strong{font-size:26px}body[data-theme=berry][data-desk-mode=desk] .wp-thumbnail{height:200px}body[data-theme=berry] .wp-pocket-button{right:320px}body[data-theme=berry] .wp-pocket-menu{right:322px}}
+@media(max-width:1250px){body[data-theme=berry] .shell-app{grid-template-columns:185px minmax(0,1fr)}body[data-theme=berry] .shell-layout{grid-template-columns:minmax(0,1fr) 232px;gap:0;padding-right:12px}body[data-theme=berry] .shell-main{padding-left:19px;padding-right:20px}body[data-theme=berry] .shell-details{padding-left:26px;padding-right:16px;margin-left:4px}body[data-theme=berry] .shell-sidebar{padding-left:10px}body[data-theme=berry] .shell-sidebar>.shell-brand{font-size:32px}body[data-theme=berry] .shell-sidebar .shell-nav-item{font-size:22px}body[data-theme=berry] .shell-pair>div:nth-child(2){display:none}body[data-theme=berry] .shell-search-hint{display:none}body[data-theme=berry] .wp-folder-grid{gap:7px 10px}body[data-theme=berry] .wp-folder-card{min-height:125px;padding:72px 12px 15px}body[data-theme=berry] .wp-folder-card strong{font-size:21px}body[data-theme=berry] .wp-social-layout{grid-template-columns:1fr}body[data-theme=berry] .wp-social-aside{display:none}body[data-theme=berry] .wp-pocket-button{right:260px}body[data-theme=berry] .wp-pocket-menu{right:260px}body[data-theme=berry] .wp-page-heading h1{font-size:39px}body[data-theme=berry][data-desk-mode=desk] .wp-file-grid{gap:25px 17px}body[data-theme=berry][data-desk-mode=desk] .wp-file-name{font-size:21px}}
+@media(max-width:1000px) and (min-width:701px){body[data-theme=berry] .shell-app{grid-template-columns:185px minmax(0,1fr);grid-template-rows:86px minmax(calc(100dvh - 115px),auto) 29px}body[data-theme=berry] .shell-layout{grid-template-columns:1fr;padding-right:16px}body[data-theme=berry] .shell-details{max-width:550px;margin:25px auto!important;padding:30px!important;width:calc(100% - 45px)}body[data-theme=berry] .shell-sidebar{max-height:100dvh}body[data-theme=berry] .shell-main{min-height:650px}body[data-theme=berry] .wp-pocket-button{right:35px}body[data-theme=berry] .wp-pocket-menu{right:38px}}
+@media(max-width:700px){body[data-theme=berry] .shell-topbar{height:114px!important;min-height:114px!important;background-color:#fbd9e8;background-image:radial-gradient(#d8a5ba .75px,transparent .75px);background-size:12px 12px;padding:10px 15px!important;grid-template-rows:39px 43px;gap:7px 10px;border-bottom:1px dashed #d5a0b8}body[data-theme=berry] .shell-topbar-title{display:flex;font-size:0}body[data-theme=berry] .shell-topbar-title::before{font:700 31px 'Caveat',cursive;letter-spacing:-1px;color:#a33e6a}body[data-theme=berry] .shell-mobile-menu{background:#fff4d6;border:1px solid #c28ca6;border-radius:4px 8px 2px 6px;box-shadow:1px 2px 0 #bc84a339;width:38px;height:38px;rotate:-3deg}body[data-theme=berry] .shell-mobile-menu svg{stroke:#a56484}body[data-theme=berry] .shell-topbar .shell-search{height:43px!important;padding:0 21px;transform:none;gap:9px;max-width:100%;background-size:100% 100%}body[data-theme=berry] .shell-topbar .shell-search input{font-size:12px}body[data-theme=berry] .shell-topbar .shell-search input::placeholder{font-size:23px}body[data-theme=berry] .shell-search>svg{width:16px;height:16px}body[data-theme=berry] .shell-pair{padding:4px 7px;rotate:2deg;transform:none;gap:0;border-color:#d2a4b7;background:#fff6db;border-radius:4px 7px 3px 5px}body[data-theme=berry] .shell-avatars>span{width:24px;height:24px;font-size:16px}body[data-theme=berry] .shell-sidebar{top:114px!important;width:255px;background-color:#ffe9ef;background-image:radial-gradient(#dfb4c8 .8px,transparent .8px);background-size:12px 12px;border-right:1px solid #c392a8!important;padding:23px 18px 20px!important;box-shadow:15px 0 30px #9b4d6a20}body[data-theme=berry] .shell-sidebar .shell-nav-item{font-size:27px;min-height:44px;padding-left:17px;gap:11px}body[data-theme=berry] .shell-sidebar .shell-nav-item>svg{width:20px;height:20px}body[data-theme=berry] .shell-nav-group{gap:7px}body[data-theme=berry] .shell-sidebar .shell-nav-label{font-size:23px;padding-top:19px}body[data-theme=berry] .shell-sidebar .shell-bottom-nav .shell-nav-item{font-size:24px;min-height:39px}body[data-theme=berry] .shell-sidebar [data-folder-tree] a{font-size:11px;min-height:34px}body[data-theme=berry] .shell-tree-section{min-height:145px;max-height:180px;flex-shrink:0;margin-top:23px}body[data-theme=berry] .shell-sidebar .shell-tree-label{font-size:25px}body[data-theme=berry] .shell-main{padding:19px 16px 110px!important;background:transparent;min-height:calc(100dvh - 144px)}body[data-theme=berry] .shell-details{transform:none;margin:15px 19px 28px!important;border:1.5px solid #bf91a7!important;border-radius:4px 8px 2px 5px!important;padding:31px 30px!important;background-color:#fffbea;overflow:visible;width:auto;max-width:none!important;box-shadow:4px 4px 0 #ead4d8,5px 6px 0 #bd869e}body[data-theme=berry] .wp-details-title h2{font-size:32px}body[data-theme=berry] .wp-mini-tasks a{font-size:12px}body[data-theme=berry] .wp-mini-tasks small{font-size:9px}body[data-theme=berry] .wp-demo-note{font-size:10px}body[data-theme=berry] .shell-statusbar{padding:8px 15px;font-size:8px;gap:6px 12px;background:#f5e0e9}body[data-theme=berry] .shell-motion-toggle{font-size:18px;min-height:36px;padding:4px 9px}body[data-theme=berry] .desk-flower{width:60px;right:-16px;top:128px;opacity:.65}body[data-theme=berry] .desk-pencil{display:none}body[data-theme=berry] .desk-doodles{width:95px;left:auto;right:-25px;bottom:110px;opacity:.45}body[data-theme=berry] .shell-heartfield>span{width:58px!important;height:58px!important;opacity:.7}body[data-theme=berry] .wp-breadcrumbs{font-size:19px;margin-bottom:8px}body[data-theme=berry] .wp-page-heading{margin:1px 0 15px;gap:11px;align-items:flex-start}body[data-theme=berry] .wp-page-heading h1{font-size:38px;letter-spacing:-.4px;line-height:1.04;margin-bottom:6px}body[data-theme=berry] .wp-page-heading p{font-size:9px;line-height:1.7}body[data-theme=berry] .wp-heading-actions{gap:8px}body[data-theme=berry] .wp-heading-actions .wp-button{font-size:10px;min-height:38px;padding:8px 12px}body[data-theme=berry] .wp-desk-switch{rotate:-.5deg;gap:0;padding:3px 4px;margin:0 0 16px;max-width:100%;width:100%}body[data-theme=berry] .wp-desk-switch .wp-button{font-size:21px;padding:5px 10px;min-height:37px}body[data-theme=berry] .wp-desk-switch .wp-button svg{width:16px;height:16px}body[data-theme=berry] .wp-desk-hint{font:17px/1.1 'Caveat',cursive;margin:5px 4px 4px;width:100%}body[data-theme=berry] .wp-toolbar{padding:8px 10px;margin:0 0 15px;transform:none;gap:6px;box-shadow:2px 2px 0 #d4a4bc25}body[data-theme=berry] .wp-toolbar>.wp-filter-group{flex:unset;justify-content:space-between;gap:8px}body[data-theme=berry] .wp-toolbar>.wp-filter-group:first-child{flex:1}body[data-theme=berry] .wp-result-count{font-size:8px}body[data-theme=berry] .wp-inline-field select{font-size:9px;min-height:32px;padding:7px 25px 7px 8px;max-width:160px}body[data-theme=berry] .wp-section-label{margin-top:15px;margin-bottom:2px;padding:0 3px}body[data-theme=berry] .wp-section-label h2{font-size:27px}body[data-theme=berry] .wp-section-label>span{font-size:18px}body[data-theme=berry] .wp-section-label .wp-badge{font:8px 'Golos Text',sans-serif;padding:5px 7px}body[data-theme=berry] .wp-folder-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 13px;padding:5px 0 11px}body[data-theme=berry] .wp-folder-card{min-height:121px;padding:71px 10px 15px;transform:rotate(-1.5deg)!important;translate:none!important;background-size:100% 100%}body[data-theme=berry] .wp-folder-card:nth-child(2n){transform:rotate(1.4deg)!important}body[data-theme=berry] .wp-folder-card strong{font-size:21px;line-height:.92;overflow-wrap:normal}body[data-theme=berry] .wp-folder-card small{font-size:7px;margin-top:5px;line-height:1.3}body[data-theme=berry][data-desk-mode=desk] .wp-file-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 13px;padding:17px 4px 35px}body[data-theme=berry][data-desk-mode=desk] .wp-file-card{grid-column:span 1!important;transform:none!important;margin-top:0!important;padding:7px 7px 0}body[data-theme=berry][data-desk-mode=desk] .wp-file-card:first-child{grid-column:1/-1!important;transform:rotate(-1deg)!important}body[data-theme=berry][data-desk-mode=desk] .wp-thumbnail{height:136px!important}body[data-theme=berry][data-desk-mode=desk] .wp-file-card:first-child .wp-thumbnail{height:216px!important}body[data-theme=berry][data-desk-mode=desk] .wp-file-card:has(.wp-file-glyph) .wp-thumbnail{height:158px!important}body[data-theme=berry][data-desk-mode=desk] .wp-file-name{font-size:22px;line-height:.96}body[data-theme=berry][data-desk-mode=desk] .wp-file-card:first-child .wp-file-name{font-size:28px}body[data-theme=berry][data-desk-mode=desk] .wp-file-card-body{padding:10px 3px 5px}body[data-theme=berry][data-desk-mode=desk] .wp-file-subline{font-size:7px;line-height:1.6;gap:3px;margin-top:7px}body[data-theme=berry][data-desk-mode=desk] .wp-file-owner{font-size:8px;margin-top:8px}body[data-theme=berry][data-desk-mode=desk] .wp-file-card-top{top:10px;left:11px;right:11px}body[data-theme=berry][data-desk-mode=desk] .wp-file-card-top .wp-check-target,body[data-theme=berry][data-desk-mode=desk] .wp-file-card-top .wp-icon-button{width:33px;min-width:33px;height:33px;min-height:33px}body[data-theme=berry][data-desk-mode=desk] .wp-file-card::before{height:21px;top:-10px;width:62px;left:calc(50% - 31px)}body[data-theme=berry][data-desk-mode=desk] .wp-file-glyph{padding:28px 8px 8px;gap:10px}body[data-theme=berry][data-desk-mode=desk] .wp-file-glyph svg{width:42px;height:42px}body[data-theme=berry][data-desk-mode=desk] .wp-file-glyph>span{font-size:21px}body[data-theme=berry] .wp-selection-bar{padding:12px;margin-top:5px;gap:9px}body[data-theme=berry] .wp-selection-bar>div{gap:6px}body[data-theme=berry] .wp-selection-bar .wp-button{min-height:37px;font-size:9px}body[data-theme=berry] .wp-pocket{right:15px;bottom:22px;z-index:50}body[data-theme=berry] .wp-pocket-button{right:17px;bottom:27px;width:69px;height:76px;padding:0;min-height:76px;font-size:0;rotate:6deg}body[data-theme=berry] .wp-pocket-button::after{font-size:17px;padding:5px 8px;left:-33px;bottom:-2px;rotate:-10deg}body[data-theme=berry] .wp-pocket-menu{right:21px;bottom:126px;width:220px;min-width:220px;max-width:calc(100vw - 42px);max-height:calc(100dvh - 190px);padding:20px 16px 14px;rotate:-1deg}body[data-theme=berry] .wp-pocket-menu button{font-size:25px;min-height:44px;padding:7px 6px}body[data-theme=berry] .wp-pocket-space{height:95px}body[data-theme=berry] .wp-social-layout{grid-template-columns:1fr}body[data-theme=berry] .wp-social-compose{padding:20px 16px 17px;margin-left:0;margin-right:0;transform:none;gap:9px}body[data-theme=berry] .wp-social-compose label[for=wp-post-text]{font-size:27px}body[data-theme=berry] .wp-social-compose textarea{font-size:11px;min-height:110px;line-height:1.9}body[data-theme=berry] .wp-social-compose-footer{gap:10px}body[data-theme=berry] .wp-social-post{padding:20px 18px;margin:0 1px 26px;transform:none!important}body[data-theme=berry] .wp-social-post:nth-child(2n){margin-left:0;margin-right:0}body[data-theme=berry] .wp-social-post>p{font-size:12px;line-height:1.9}body[data-theme=berry] .wp-social-meta{gap:2px}body[data-theme=berry] .wp-social-meta>.wp-button{font-size:10px;min-height:39px;padding:6px}body[data-theme=berry] .wp-social-media{gap:9px;margin:15px 0}body[data-theme=berry] .wp-social-media>button{height:150px;padding:5px;transform:none!important;translate:none!important}body[data-theme=berry] .wp-memory{padding:20px 16px;transform:none!important;margin:13px 0 29px}body[data-theme=berry] .wp-memory h2{font-size:29px}body[data-theme=berry] .wp-memory p{font-size:12px}body[data-theme=berry] .wp-memory-photo{height:240px;padding:6px 6px 19px;transform:rotate(.5deg)}body[data-theme=berry] .wp-planner-summary{gap:11px;padding:13px;rotate:0deg;font-size:9px}body[data-theme=berry] .wp-planner-summary strong{font-size:28px}body[data-theme=berry] .wp-task-list{grid-template-columns:1fr;gap:22px;padding:8px 5px 25px}body[data-theme=berry] .wp-task{transform:none!important;padding:20px 18px 16px}body[data-theme=berry] .wp-task-top h3{font-size:27px;line-height:1.06}body[data-theme=berry] .wp-task-top .wp-icon-button{min-width:30px;width:30px;height:30px;min-height:30px}body[data-theme=berry] .wp-task-bottom>span{font-size:10px}body[data-theme=berry] .wp-task select{min-height:33px;font-size:10px}body[data-theme=berry] .wp-task-repeat{font-size:9px}body[data-theme=berry] .wp-kanban{padding:9px 2px;gap:14px;grid-template-columns:repeat(3,minmax(252px,1fr))}body[data-theme=berry] .wp-kanban-column{padding:20px 13px}body[data-theme=berry] .wp-kanban-column .wp-task-top h3{font-size:25px}body[data-theme=berry] .wp-wish-grid{grid-template-columns:1fr;gap:28px;padding:13px 5px 30px}body[data-theme=berry] .wp-wish-card{transform:none!important;translate:none!important}body[data-theme=berry] .wp-wish-body{padding:20px 13px}body[data-theme=berry] .wp-wish-body h2{font-size:31px}body[data-theme=berry] .wp-wish-body>p{font-size:12px}body[data-theme=berry] .wp-wish-art{height:155px}body[data-theme=berry] .wp-wish-demo{rotate:0deg;padding:13px}body[data-theme=berry] .wp-wish-demo p{font-size:9px}body[data-theme=berry] .wp-wish-demo select{font-size:11px;min-height:37px}body[data-theme=berry] .wp-price{font-size:36px}body[data-theme=berry] .wp-private-note{font-size:10px}body[data-theme=berry] .wp-vault-gate{transform:none;padding:24px;margin:25px 4px;gap:23px}body[data-theme=berry] .wp-vault-gate h2{font-size:32px}body[data-theme=berry] .wp-activity-list{transform:none;padding:0 16px;margin:0 3px}body[data-theme=berry] .wp-album-grid{grid-template-columns:1fr;gap:29px;padding:14px 7px}body[data-theme=berry] .wp-album-card{transform:none!important;translate:none!important;margin:0!important}body[data-theme=berry] .wp-album-card>img{height:200px}body[data-theme=berry] .wp-album-card h2{font-size:28px}body[data-theme=berry][data-desk-mode=catalog] .wp-folder-card{min-height:92px;padding:44px 8px 11px;transform:none!important;translate:none!important;background-size:100% 150%}body[data-theme=berry][data-desk-mode=catalog] .wp-folder-card strong{font-size:21px}body[data-theme=berry][data-desk-mode=catalog] .wp-file-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}body[data-theme=berry][data-desk-mode=catalog] .wp-thumbnail{height:120px}body[data-theme=berry] .wp-dialog{padding:22px 19px;max-width:calc(100vw - 28px)}body[data-theme=berry] .wp-dialog-heading h2{font-size:30px}body[data-theme=berry] .wp-upload-slot{bottom:128px}}
+@media(prefers-reduced-motion:reduce){body[data-theme=berry] *,body[data-theme=berry] *::before,body[data-theme=berry] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}body[data-theme=berry] .shell-heartfield{display:none}}
+
+body[data-theme=berry] .wp-wish-art>span:first-child{font-size:0;color:transparent;width:130px;height:105px;background:url('/illustrations/cup.svg') center/contain no-repeat;transform:rotate(-4deg)}
+body[data-theme=berry] .wp-wish-trip>span:first-child{background-image:url('/illustrations/cottage.svg')}
+body[data-theme=berry] .wp-wish-book>span:first-child{background-image:url('/illustrations/book.svg')}
+body[data-theme=berry] .wp-wish-card:nth-child(3) .wp-wish-home>span:first-child{background-image:url('/illustrations/brush.svg')}
+body[data-theme=berry] .wp-pocket-button{right:37px;bottom:55px}
+body[data-theme=berry] .wp-pocket-menu{right:37px;bottom:174px}
+@media(max-width:700px){body[data-theme=berry] .wp-pocket-button{right:17px;bottom:27px}body[data-theme=berry] .wp-pocket-menu{right:21px;bottom:126px}}
+@media(max-width:360px){body[data-theme=berry][data-desk-mode=desk] .wp-file-grid{grid-template-columns:1fr;padding-left:7px;padding-right:7px}body[data-theme=berry][data-desk-mode=desk] .wp-file-card{grid-column:1!important}body[data-theme=berry][data-desk-mode=desk] .wp-file-card .wp-thumbnail{height:205px!important}body[data-theme=berry][data-desk-mode=desk] .wp-file-name{font-size:27px}body[data-theme=berry] .wp-folder-card strong{font-size:19px}body[data-theme=berry] .wp-folder-card{min-height:111px;padding-top:65px;padding-bottom:13px}body[data-theme=berry] .wp-desk-switch .wp-button{font-size:20px;padding-left:7px;padding-right:7px}}
+body[data-theme=berry] .wp-pocket-button::after{left:auto;right:-5px}
+@media(max-width:700px){body[data-theme=berry] .wp-pocket-button::after{left:auto;right:0;rotate:-6deg}body[data-theme=berry] .shell-main:has(.wp-desk-switch) .wp-page-heading{flex-wrap:nowrap;align-items:flex-start;gap:9px}body[data-theme=berry] .shell-main:has(.wp-desk-switch) .wp-heading-actions{flex-wrap:nowrap;gap:6px;max-width:90px;flex-shrink:0;margin-top:3px}body[data-theme=berry] .shell-main:has(.wp-desk-switch) .wp-heading-actions .wp-button{font-size:0;width:37px;min-width:37px;height:37px;min-height:37px;padding:8px}body[data-theme=berry] .shell-main:has(.wp-desk-switch) .wp-heading-actions .wp-button svg{width:18px;height:18px}body[data-theme=berry] .wp-desk-hint{display:none}body[data-theme=berry] .wp-toolbar .wp-result-count{display:none}body[data-theme=berry] .wp-desk-switch{width:fit-content;gap:2px;padding:3px;margin-bottom:15px}body[data-theme=berry] .wp-folder-card{min-height:116px;padding-top:68px;padding-bottom:14px}}
+@media(max-width:700px){body[data-theme=berry] .wp-breadcrumbs:not(:has(svg)){display:none}body[data-theme=berry] .wp-folder-card{min-height:107px;padding-top:61px;padding-bottom:12px}body[data-theme=berry][data-desk-mode=catalog] .wp-folder-card{min-height:92px;padding-top:44px;padding-bottom:11px}}

@@ -1,0 +1,14 @@
+export type User={id:string;slot:number;role:'admin'|'partner';username:string;displayName:string;mustChangePassword:boolean;disabled?:boolean;avatarUrl?:string|null};
+export type Pair={name:string;startDate?:string;timeZone:string;locale:'ru'|'en';theme:'berry'|'rose'|'cloud';avatarUrl?:string|null};
+export type Session={user:User;pair:Pair};
+export type Folder={id:string;parentId?:string|null;name:string;space:'shared'|'vault'};
+export type CloudFile={id:string;name:string;folderId?:string|null;space:'shared'|'vault';mimeType:string;size:number;createdAt:string;updatedAt:string;ownerId:string;ownerName:string;favorite:boolean;trashedAt?:string|null;contentUrl:string;thumbnailUrl?:string|null};
+export type Album={id:string;name:string;fileIds:string[];coverUrl?:string};
+export type Activity={id:string;actorName:string;text:string;createdAt:string};
+export type StorageInfo={usedBytes:number;quotaBytes:number;fileCount:number};
+export type Post={id:string;kind:'message'|'memory'|'reply';body:string;authorId:string;authorName:string;authorAvatarUrl?:string|null;createdAt:string;pinned:boolean;liked:boolean;heartCount:number;replyCount:number;files:CloudFile[]};
+export type FeedPage={items:Post[];nextCursor:string|null};
+export type Priority='low'|'normal'|'high';
+export type Task={id:string;title:string;assigneeId?:string|null;dueDate?:string|null;priority:Priority;status:'todo'|'doing'|'done';repeat:'none'|'daily'|'weekly'|'monthly';createdAt:string};
+export type Wish={id:string;ownerId:string;ownerName:string;title:string;note?:string;url?:string;price?:number|null;currency:'RUB';category:string;priority:Priority;reservation?:'reserved'|'bought'};
+export type VaultStatus={enrolled:boolean;unlocked:boolean;expiresAt?:string|null};

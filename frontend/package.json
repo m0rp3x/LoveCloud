@@ -1,0 +1,6 @@
+{
+  "name":"lovecloud-frontend","version":"1.0.0","private":true,
+  "scripts":{"dev":"next dev --hostname 0.0.0.0","build":"next build","start":"node .next/standalone/server.js","typecheck":"tsc --noEmit"},
+  "dependencies":{"next":"16.4.2","react":"19.3.1","react-dom":"19.3.1","swr":"^2.3.6","@microsoft/signalr":"^10.0.0","qrcode":"^1.5.4"},
+  "devDependencies":{"typescript":"^5.9.3","@types/node":"^24.10.0","@types/react":"^19.2.2","@types/react-dom":"^19.2.2","@types/qrcode":"^1.5.6"}
+}

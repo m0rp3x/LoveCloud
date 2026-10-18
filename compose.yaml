@@ -1,0 +1,92 @@
+name: lovecloud
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: lovecloud
+      POSTGRES_USER: lovecloud
+      POSTGRES_PASSWORD_FILE: /run/secrets/database_password
+    secrets:
+      - database_password
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lovecloud -d lovecloud"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks: [private]
+
+  api:
+    image: lovecloud-api:local
+    build:
+      context: ./backend
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DatabaseFile: /run/secrets/database_connection
+      Bootstrap__PasswordFile: /run/secrets/bootstrap_password
+      Setup__TokenFile: /run/secrets/setup_token
+      Storage__Root: /data/files
+      DataProtection__KeyPath: /data/keys
+      App__Origin: ${APP_ORIGIN:-http://localhost:3211}
+      App__SecureCookies: ${SECURE_COOKIES:-false}
+    secrets:
+      - database_connection
+      - bootstrap_password
+      - setup_token
+    volumes:
+      - files:/data/files
+      - keys:/data/keys
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [private]
+
+  frontend:
+    image: lovecloud-frontend:local
+    build:
+      context: ./frontend
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      INTERNAL_API_URL: http://api:8080
+      NEXT_TELEMETRY_DISABLED: 1
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks: [private]
+
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "${LOVE_CLOUD_BIND:-127.0.0.1}:${LOVE_CLOUD_PORT:-3211}:80"
+    volumes:
+      - ./ops/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - api
+    restart: unless-stopped
+    networks: [private]
+
+volumes:
+  pgdata:
+  files:
+  keys:
+
+secrets:
+  database_password:
+    file: ./.secrets/database_password
+  database_connection:
+    file: ./.secrets/database_connection
+  bootstrap_password:
+    file: ./.secrets/bootstrap_password
+  setup_token:
+    file: ./.secrets/setup_token
+
+networks:
+  private:

@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.png -text
+*.jpg -text
+*.jpeg -text
+*.webp -text
+*.gif -text
+*.ttf -text
+*.woff -text
+*.woff2 -text
+frontend/public/fonts/*-OFL.txt -whitespace

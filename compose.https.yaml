@@ -1,0 +1,21 @@
+# Optional public HTTPS entry point. Configure domain/DNS before using.
+services:
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      LOVE_CLOUD_DOMAIN: ${LOVE_CLOUD_DOMAIN:?Set LOVE_CLOUD_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - tls_data:/data
+      - tls_config:/config
+    depends_on:
+      - gateway
+    restart: unless-stopped
+    networks: [private]
+volumes:
+  tls_data:
+  tls_config:

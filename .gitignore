@@ -1,0 +1,12 @@
+node_modules/
+.next/
+bin/
+obj/
+.env
+.env.*
+!.env.example
+.artifacts/
+.secrets/
+backups/
+*.user
+TestResults/

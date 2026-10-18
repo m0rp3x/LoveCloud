@@ -1,0 +1,5 @@
+{$LOVE_CLOUD_DOMAIN} {
+    reverse_proxy gateway:80
+    header X-Content-Type-Options nosniff
+    header Referrer-Policy same-origin
+}

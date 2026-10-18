@@ -1,0 +1,18 @@
+import{currentLocale,localizedError,translate}from'./i18n';
+export class ApiError extends Error{constructor(message:string,public status:number){super(localizedError(message));}}
+let csrfToken:string|null=null;
+export function resetCsrf(){csrfToken=null;}
+export async function csrf(){if(!csrfToken){const r=await fetch('/api/v1/auth/csrf',{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw new ApiError('Не удалось проверить сессию. Войдите снова.',r.status);csrfToken=(await r.json()).token;}return csrfToken!;}
+export async function api<T=void>(path:string,method='GET',body?:unknown,signal?:AbortSignal):Promise<T>{
+  const headers:Record<string,string>={'Accept-Language':currentLocale()};if(body!==undefined)headers['Content-Type']='application/json';
+  if(method!=='GET'&&method!=='HEAD'&&path!=='/auth/login')headers['X-CSRF-Token']=await csrf();
+  const r=await fetch('/api/v1'+path,{method,body:body===undefined?undefined:JSON.stringify(body),headers,credentials:'same-origin',cache:'no-store',signal});
+  if(!r.ok){let problem:{detail?:string;title?:string}={};try{problem=await r.json();}catch{}if(r.status===401&&typeof window!=='undefined')window.dispatchEvent(new Event('lovecloud:unauthorized'));if(r.status===423&&typeof window!=='undefined')window.dispatchEvent(new Event('lovecloud:vault-locked'));throw new ApiError(localizedError(problem.detail||problem.title||translate('Не удалось выполнить действие. Попробуйте снова.')),r.status);}
+  if(r.status===204)return undefined as T;return r.json();
+}
+export async function uploadFile(file:File,folderId:string|null,space:'shared'|'vault',onProgress:(value:number)=>void,signal:AbortSignal):Promise<import('./types').CloudFile>{
+  const token=await csrf();return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open('POST','/api/v1/files/upload');xhr.withCredentials=true;xhr.setRequestHeader('X-CSRF-Token',token);xhr.setRequestHeader('Accept-Language',currentLocale());const abort=()=>xhr.abort();signal.addEventListener('abort',abort,{once:true});xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress(Math.round(e.loaded/e.total*100));};xhr.onerror=()=>{signal.removeEventListener('abort',abort);reject(new ApiError('Сеть недоступна. Повторите загрузку.',0));};xhr.onabort=()=>{signal.removeEventListener('abort',abort);reject(new DOMException(translate('Загрузка отменена'),'AbortError'));};xhr.onload=()=>{signal.removeEventListener('abort',abort);if(xhr.status>=200&&xhr.status<300){resolve(JSON.parse(xhr.responseText));}else {let detail='Не удалось загрузить файл';try{const p=JSON.parse(xhr.responseText);detail=p.detail||p.title||detail;}catch{}reject(new ApiError(detail,xhr.status));}};const data=new FormData();data.append('file',file);if(folderId)data.append('folderId',folderId);data.append('space',space);if(signal.aborted){reject(new DOMException(translate('Загрузка отменена'),'AbortError'));return;}xhr.send(data);});
+}
+export function mediaUrl(file:import('./types').CloudFile){return file.contentUrl||`/api/v1/files/${file.id}/content`;}
+export function safeLink(value?:string){try{const u=new URL(value||'');return ['https:','http:'].includes(u.protocol)?u.href:undefined;}catch{return undefined;}}
+export async function allSharedFiles(){const folders=await api<import('./types').Folder[]>('/folders?space=shared');const pages=await Promise.all([api<import('./types').CloudFile[]>('/files?space=shared'),...folders.map(f=>api<import('./types').CloudFile[]>('/files?space=shared&folderId='+encodeURIComponent(f.id)))]);return [...new Map(pages.flat().map(f=>[f.id,f])).values()];}

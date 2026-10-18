@@ -1,0 +1,29 @@
+# A separate Tailscale identity preserves the host's existing MagicDNS/services.
+# Start tailscale first and authorize it, then run the whole stack.
+services:
+  tailscale:
+    image: tailscale/tailscale:v1.98.4
+    hostname: lovecloud
+    environment:
+      TS_FORCE_NOISE_443: "true"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - mkdir -p /var/run/tailscale && exec tailscaled --tun=userspace-networking --port=0 --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock
+    volumes:
+      - tailnet_state:/var/lib/tailscale
+    restart: unless-stopped
+    network_mode: host
+  gateway:
+    ports:
+      - "${LOVE_CLOUD_BIND:-127.0.0.1}:${LOVE_CLOUD_REDIRECT_PORT:-3212}:81"
+    volumes:
+      - ./ops/nginx.tailnet.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      tailscale:
+        condition: service_started
+      frontend:
+        condition: service_started
+      api:
+        condition: service_started
+volumes:
+  tailnet_state:
