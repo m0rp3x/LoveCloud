@@ -54,10 +54,10 @@ try{
   if(!options['baseline-images']){report.checks.push({name:'baseline backup/restore/upgrade',status:'NOT RUN',detail:'--baseline-images for exact baseline381a796 is required.'});save();throw new Error('Mandatory baseline image lock missing.');}
   const original=join(stage,'original');extract(archive,original);copyFileSync(resolve(options['baseline-images']),join(original,'compose.images.yaml'));
   const originalProject=projectName('upgrade');projects.push(original);
-  writeFileSync(join(original,'compose.qa-volumes.yaml'),`volumes:\n  files:\n    name: ${originalProject}_custom_originals\n  keys:\n    name: ${originalProject}_custom_keyring\n  pgdata:\n    name: ${originalProject}_custom_pg18\n`);
+  writeFileSync(join(original,'compose.qa-volumes.yaml'),`volumes:\n  files:\n    name: ${originalProject}_custom_originals\n  keys:\n    name: ${originalProject}_custom_keyring\n  pgdata:\n    name: ${originalProject}_custom_pg18\nnetworks:\n  private:\n    name: ${originalProject}_custom_network\n`);
   const originalUrl=install(original,{project:originalProject,port:33212,extraFiles:['compose.qa-volumes.yaml'],start:false});
   compose(original,['pull','db','gateway']);compose(original,['up','-d','--no-build','--pull','never']);await ready(originalUrl);
-  const originalConfig=checkLocked(original,undefined,{baseline:true}),volumesBefore={...originalConfig.volumes};
+  const originalConfig=checkLocked(original,undefined,{baseline:true}),volumesBefore={...originalConfig.volumes},networksBefore={...originalConfig.networks};
   report.baselineImages={api:originalConfig.services.api.image,frontend:originalConfig.services.frontend.image};save();
   await check('baseline synthetic functional data',async()=>{await integration(original,originalUrl);return 'Baseline381a796 accounts, folders, byte ranges, profile/couple avatars, post, recurring task, wishes, SignalR and real TOTP/vault originals, with exact SHA256.';});
   const repository=join(stage,'encrypted-backup');
@@ -66,7 +66,9 @@ try{
   await check('restore isolated project and originals',async()=>{
     run('sh',[join(original,'scripts/restore.sh'),'--repository',repository,'--password-file',join(original,'.secrets/backup_password'),'--target',restored,'--project',projectName('restore'),'--origin','http://localhost:33214','--port','33214'],{env:{LOVECLOUD_BACKUP_IMAGE:process.env.LOVECLOUD_BACKUP_IMAGE||''}});
     syntheticState(original,restored);await ready('http://localhost:33214');test(restored,'http://localhost:33214','persistence');
-    assert.notEqual(jsonConfig(restored).name,originalProject);return 'Separate fresh volumes; existing accounts/publication/task/avatar hashes, original/vault checksums and decryptable TOTP key ring verified.';
+    const restoredConfig=jsonConfig(restored);assert.notEqual(restoredConfig.name,originalProject);assert.notEqual(restoredConfig.networks.private.name,originalConfig.networks.private.name);
+    assert(Object.values(restoredConfig.volumes).every(v=>v.name.startsWith(restoredConfig.name+'_restore_')),'No original volume names survive restored config');
+    return 'Separate fresh volumes/network; existing accounts/publication/task/avatar hashes, original/vault checksums and decryptable TOTP key ring verified.';
   });
   await check('PowerShell encrypted backup and restore',async()=>{
     const repo=join(stage,'encrypted-backup-ps'),destination=join(stage,'restored-ps');projects.push(destination);
@@ -77,7 +79,7 @@ try{
   await check('update same project and custom volumes',async()=>{
     const hashes=secretHashes(original);copyFileSync(lock,join(original,'compose.images.yaml'));
     compose(original,['pull']);compose(original,['up','-d','--no-build']);await ready(originalUrl);
-    const config=checkLocked(original,expected);assert.equal(config.name,originalProject);assert.deepEqual(config.volumes,volumesBefore);assert.deepEqual(secretHashes(original),hashes);
+    const config=checkLocked(original,expected);assert.equal(config.name,originalProject);assert.deepEqual(config.volumes,volumesBefore);assert.deepEqual(config.networks,networksBefore);assert.deepEqual(secretHashes(original),hashes);
     test(original,originalUrl,'persistence');return 'No renaming/no volume recreation; persisted origin/custom source list/secrets/PostgreSQL18 mount preserved.';
   });
   await check('candidate recreation persistence',async()=>{compose(original,['up','-d','--no-build','--force-recreate']);await ready(originalUrl);checkLocked(original,expected);test(original,originalUrl,'persistence');});
