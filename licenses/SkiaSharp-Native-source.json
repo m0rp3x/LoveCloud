@@ -1,0 +1,10 @@
+{
+  "package": "SkiaSharp.NativeAssets.Linux.NoDependencies",
+  "version": "4.153.1",
+  "url": "https://api.nuget.org/v3-flatcontainer/skiasharp.nativeassets.linux.nodependencies/4.153.1/skiasharp.nativeassets.linux.nodependencies.4.153.1.nupkg",
+  "sha256": "1678572dd5d1488c3f39892460bec16c2b0942489f3a5149abfbcbae3da53431",
+  "files": [
+    "LICENSE.txt",
+    "THIRD-PARTY-NOTICES.txt"
+  ]
+}

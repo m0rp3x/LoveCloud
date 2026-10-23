@@ -3,12 +3,13 @@
 ## Scope and ownership
 
 The release applies Apache-2.0 to original LoveCloud code, configuration,
-documentation and project vector illustrations. **Original-material rights
-confirmation is pending the repository owner's response**; commit author or
-brand alone is not evidence of ownership. Do not publish the release while that
-confirmation is unresolved. No copyright holder has been invented in LICENSE.
-The file is the complete, unmodified official Apache-2.0 text; NOTICE preserves
-informational attribution without adding restrictions.
+documentation and project vector illustrations. The repository owner explicitly
+confirmed their rights to the original code and drawings and authorized their
+Apache-2.0 release on 2026-10-23. The confirmed copyright designation is
+**Copyright 2026 m0rp3x**. Brand and commit author alone were not used as proof.
+Third-party materials remain under their own terms. LICENSE is the complete,
+unmodified official Apache-2.0 text; NOTICE preserves attribution without adding
+restrictions.
 
 Source: https://www.apache.org/licenses/LICENSE-2.0.txt (retrieved 2026-10-23).
 
@@ -17,8 +18,7 @@ Source: https://www.apache.org/licenses/LICENSE-2.0.txt (retrieved 2026-10-23).
 Caveat, Golos Text and Rubik are local, unmodified font files with their complete
 SIL OFL notices retained in frontend/public/fonts, design/assets/fonts and
 licenses. The README SVG banner uses font outlines. Standalone SVG icons and
-paper-envelope art are project-authored source files, subject to the rights
-confirmation above; they have no embedded external image resources.
+paper-envelope art are project-authored source files, covered by that original-material rights confirmation; they have no embedded external image resources.
 
 ## Media disposition
 
@@ -26,6 +26,7 @@ confirmation above; they have no embedded external image resources.
 | --- | --- | --- |
 | docs/assets/*.jpg | Committed docs/assets/README.md says separate synthetic actual-app installation; visual review found local project SVG art and fictional Anya/Misha content | Retained as app screenshots. No tokens, private photos or work addresses visible. |
 | design/assets/*preview*.jpg/png and design/strawberry/illustrations/*preview*.jpg/png | Historical design captures; original JS referenced four images.unsplash.com photo IDs, photographer attribution absent | Removed from source tree for this release. Not included in Pages or install artifacts. Earlier Git history is not relicensed by this release. |
+| docs/assets/themes.jpg | Old settings screenshot embedded the old theme-card stock-photo pixels | Removed; README uses a safe actual-app Cloud Atelier screenshot instead. |
 | frontend/public/themes/*.jpg | Historical prototype screenshots; berry visibly included sea/flower stock photos | Replaced by corresponding actual-app synthetic docs screenshots. |
 | design/assets/workspace.js stock URLs | Four Unsplash image URLs, no established photographer/source record | Replaced by local project SVG illustrations. |
 | Google Fonts CSS imports | Live third-party fonts.googleapis.com request | Removed for the published strawberry prototype; local fonts/OFL supplied. |

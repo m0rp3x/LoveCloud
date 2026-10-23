@@ -21,7 +21,7 @@ LoveCloud brings files, a social feed, shared plans and wishlists into a private
 | 🎁 Wishes | Each partner’s wishlist, notes, links and prices; gift reservations are hidden from the wish’s author. |
 | 🔐 Private moments | A shared protected area with each partner’s TOTP, recovery codes and temporary access. |
 
-<table><tr><td><img src="docs/assets/feed.jpg" alt="Social feed"></td><td><img src="docs/assets/planner.jpg" alt="Shared planner"></td></tr><tr><td><img src="docs/assets/wishes.jpg" alt="Wishlists"></td><td><img src="docs/assets/themes.jpg" alt="Three themes"></td></tr></table>
+<table><tr><td><img src="docs/assets/feed.jpg" alt="Social feed"></td><td><img src="docs/assets/planner.jpg" alt="Shared planner"></td></tr><tr><td><img src="docs/assets/wishes.jpg" alt="Wishlists"></td><td><img src="docs/assets/cloud-atelier.jpg" alt="Cloud Atelier theme"></td></tr></table>
 
 Screenshots show a separate synthetic installation, never a real couple’s data. [Media provenance](docs/assets/README.md).
 
@@ -29,7 +29,7 @@ Screenshots show a separate synthetic installation, never a real couple’s data
 
 Download **lovecloud-v0.1.0-install.tar.gz** or **.zip** from the [release](https://github.com/m0rp3x/LoveCloud/releases/tag/v0.1.0), verify its checksum, extract it and open a terminal there. Normal installation downloads ready-made, digest-pinned images. No Git, Node.js or .NET SDK is needed.
 
-Requirements: Docker Engine (or Docker Desktop in Linux-container mode), Compose v2 with `--wait` support, a supported shell and internet access to GHCR / Docker registries. The shell installer needs `openssl`; PowerShell requires version 7. Supported release images are **linux/amd64**; macOS/arm64 native support has not been verified.
+Requirements: Docker Engine (or Docker Desktop in Linux-container mode), Compose v2.24.4 or newer, a supported shell and internet access to GHCR / Docker registries. The shell installer needs `openssl`; PowerShell requires version 7. Supported release images are **linux/amd64**; macOS/arm64 native support has not been verified.
 
 ```sh
 sh scripts/init.sh --start

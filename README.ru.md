@@ -21,7 +21,7 @@ LoveCloud объединяет файлы, социальную ленту, пл
 | 🎁 Желаний | Личный вишлист каждого, заметки, ссылки, цены. Резерв подарка скрыт от автора желания. |
 | 🔐 Личного | Общая защищённая область, отдельный TOTP каждого партнёра, recovery codes, временный доступ. |
 
-<table><tr><td><img src="docs/assets/feed.jpg" alt="Социальная лента"></td><td><img src="docs/assets/planner.jpg" alt="Общий планнер"></td></tr><tr><td><img src="docs/assets/wishes.jpg" alt="Вишлисты"></td><td><img src="docs/assets/themes.jpg" alt="Три темы"></td></tr></table>
+<table><tr><td><img src="docs/assets/feed.jpg" alt="Социальная лента"></td><td><img src="docs/assets/planner.jpg" alt="Общий планнер"></td></tr><tr><td><img src="docs/assets/wishes.jpg" alt="Вишлисты"></td><td><img src="docs/assets/cloud-atelier.jpg" alt="Тема Cloud Atelier"></td></tr></table>
 
 Скриншоты сняты в отдельной синтетической установке. Личных материалов пары нет. [Происхождение изображений](docs/assets/README.md).
 
@@ -29,7 +29,7 @@ LoveCloud объединяет файлы, социальную ленту, пл
 
 Скачайте **lovecloud-v0.1.0-install.tar.gz** или **.zip** из [релиза](https://github.com/m0rp3x/LoveCloud/releases/tag/v0.1.0), проверьте SHA-256, распакуйте и откройте терминал в каталоге. Обычная установка скачивает готовые Docker-образы, закреплённые по digest. Git, Node.js и .NET SDK не требуются.
 
-Нужны Docker Engine либо Docker Desktop с Linux-контейнерами, Compose v2 с `--wait`, поддерживаемая оболочка и доступ к реестрам образов. Shell-установщику нужен `openssl`, PowerShell — версии 7. Проверяемая платформа выпуска — **linux/amd64**. Нативная поддержка arm64/macOS не заявлена.
+Нужны Docker Engine либо Docker Desktop с Linux-контейнерами, Compose v2.24.4 или новее, поддерживаемая оболочка и доступ к реестрам образов. Shell-установщику нужен `openssl`, PowerShell — версии 7. Проверяемая платформа выпуска — **linux/amd64**. Нативная поддержка arm64/macOS не заявлена.
 
 ```sh
 sh scripts/init.sh --start

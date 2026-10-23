@@ -1,7 +1,7 @@
 name: Interactive preview
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths: ['design/**', 'scripts/release/build-pages.py', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES', '.github/workflows/pages.yml']
   workflow_dispatch:
 permissions:

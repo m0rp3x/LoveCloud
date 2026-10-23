@@ -5,7 +5,7 @@ Use the [v0.1.0 installation archive](https://github.com/m0rp3x/LoveCloud/releas
 ## Requirements
 
 - Linux amd64 Docker host; Docker Engine or Docker Desktop in Linux-container mode.
-- Docker Compose v2 with `up --wait`; internet access to the image registries.
+- Docker Compose v2.24.4 or newer (including `up --wait` and volume `!override` support); internet access to the image registries.
 - POSIX shell and `openssl` for `init.sh`, or PowerShell 7 for `init.ps1`.
 - Sufficient disk for originals, PostgreSQL, staging during upload and backups.
 - Backup/restore scripts additionally require Python 3 (standard library); no Node.js, Git or .NET SDK is needed for normal installation.
