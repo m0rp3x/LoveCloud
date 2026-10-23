@@ -12,6 +12,26 @@ spec.loader.exec_module(probe)
 
 
 class SourceEvidenceChecks(unittest.TestCase):
+    def test_official_gitlab_and_github_exact_commit_archives_pass(self):
+        commit='a'*40
+        for uri in [f'https://gitlab.alpinelinux.org/alpine/aports/-/archive/{commit}/aports-{commit}.tar.gz?path=main/busybox',
+                    f'https://github.com/alpinelinux/aports/archive/{commit}.tar.gz',
+                    f'https://codeload.github.com/alpinelinux/aports/tar.gz/{commit}']:
+            with self.subTest(uri=uri):self.assertIn('official Alpine',probe.verify_aports_provenance(uri,commit))
+
+    def test_aports_unknown_host_owner_or_wrong_commit_fails(self):
+        commit='a'*40
+        uris=[f'https://example.test/alpinelinux/aports/archive/{commit}.tar.gz',
+              f'https://github.com.example.test/alpinelinux/aports/archive/{commit}.tar.gz',
+              f'https://github.com/unrelated/aports/archive/{commit}.tar.gz',
+              'https://github.com/alpinelinux/aports/archive/'+('b'*40)+'.tar.gz',
+              'https://github.com/alpinelinux/aports/archive/master.tar.gz',
+              f'http://github.com/alpinelinux/aports/archive/{commit}.tar.gz',
+              f'https://gitlab.alpinelinux.org/alpine/aports/-/archive/{commit}/aports-{commit}.tar.gz?path=main/unrelated',
+              f'https://gitlab.alpinelinux.org/alpine/aports/-/archive/{commit}/aports-{commit}.tar.gz?path=main/busybox&path=testing/unrelated']
+        for uri in uris:
+            with self.subTest(uri=uri),self.assertRaises(AssertionError):probe.verify_aports_provenance(uri,commit)
+
     def test_probe_images_are_complete_immutable_references(self):
         for image in [probe.IMAGE,probe.NODE_IMAGE]:
             self.assertRegex(image,r'^.+@sha256:[0-9a-f]{64}$')

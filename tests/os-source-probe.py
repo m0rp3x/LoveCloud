@@ -16,6 +16,7 @@ import subprocess
 import tempfile
 import time
 import uuid
+from urllib.parse import urlsplit, parse_qs
 from unittest.mock import patch
 
 IMAGE = 'mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b'
@@ -23,6 +24,25 @@ NODE_IMAGE = 'node@sha256:1200d815de24f8dcca745fbf7651d166034a35adbcad8860a8538f
 VERSION = '255.4-1ubuntu8.17'
 SNAPSHOT = 'https://snapshot.ubuntu.com/ubuntu/20260901T000000Z/'
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def verify_aports_provenance(value, commit, origin='busybox'):
+    """Accept immutable archive URLs from the two official aports providers."""
+    assert re.fullmatch(r'[0-9a-f]{40}',commit), 'Exact aports commit required.'
+    url=urlsplit(value.strip())
+    assert url.scheme=='https' and not url.fragment and not url.username and not url.password, 'Official HTTPS aports archive required.'
+    if url.netloc=='gitlab.alpinelinux.org':
+        assert url.path==f'/alpine/aports/-/archive/{commit}/aports-{commit}.tar.gz', 'Exact aports commit archive path required.'
+        query=parse_qs(url.query)
+        assert set(query)=={'path'} and query['path'] in [[f'{repo}/{origin}'] for repo in ['main','community','testing']], 'Exact aports recipe subtree required.'
+        return 'official Alpine GitLab'
+    if url.netloc=='github.com':
+        assert url.path==f'/alpinelinux/aports/archive/{commit}.tar.gz' and not url.query, 'Exact official GitHub aports commit archive required.'
+        return 'official Alpine GitHub mirror'
+    if url.netloc=='codeload.github.com':
+        assert url.path==f'/alpinelinux/aports/tar.gz/{commit}' and not url.query, 'Exact official GitHub aports commit archive required.'
+        return 'official Alpine GitHub mirror'
+    raise AssertionError('Unrecognized aports archive provider.')
 
 
 def acquire(collector, image, output, version, role, inventory=None):
@@ -127,14 +147,14 @@ def main():
             package_release=re.search(r'^pkgrel=([^\n]+)',recipe_text,re.M)[1].strip("'\"")
             assert busybox['version']==package_version+'-r'+package_release, 'Recipe must match actual installed APK version.'
             provenance=(recipe.parent/'recipe-url.txt').read_text()
-            assert '/-/archive/'+busybox['commit']+'/' in provenance, 'Exact aports commit provenance required.'
+            provider=verify_aports_provenance(provenance,busybox['commit'])
             artifacts=[]
             for file in (target/'distfiles').rglob('*'):
                 if file.is_file():
                     with file.open('rb') as stream: digest=hashlib.file_digest(stream,'sha256').hexdigest()
                     artifacts.append({'name':file.name,'sha256':digest,'bytes':file.stat().st_size})
             assert artifacts, 'Actual abuild-fetched and checksum-verified distfiles required.'
-            report['checks'].append({'name':'actual Alpine busybox exact aports fetch and verify','status':'PASS','recipe':provenance.strip(),'artifacts':artifacts})
+            report['checks'].append({'name':'actual Alpine busybox exact aports fetch and verify','status':'PASS','recipe':provenance.strip(),'recipeProvider':provider,'artifacts':artifacts})
             print('PASS real Linux Docker Alpine probe: installed busybox exact version+aports commit, source recipe, abuild fetch/verify and completion marker.')
             return
         result = acquire(collector, args.image, output, VERSION, 'historical')
