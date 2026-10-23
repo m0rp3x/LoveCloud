@@ -62,8 +62,13 @@ def parse_apk(data):
     for entry in data.split('\n\n'):
         fields = dict(line.split(':', 1) for line in entry.splitlines() if ':' in line)
         if 'P' in fields:
-            packages.append({key:fields.get(field, '') for key,field in
-                             [('name','P'),('version','V'),('origin','o'),('commit','c'),('license','L')]})
+            package={key:fields.get(field, '') for key,field in
+                     [('name','P'),('version','V'),('origin','o'),('commit','c'),('license','L')]}
+            package['installedBytes']=int(fields.get('I','-1'))
+            package['fileEntries']=sum(line.startswith(('F:','R:')) for line in entry.splitlines())
+            package['dependencies']=fields.get('D','').split()
+            package['provides']=fields.get('p','').split()
+            packages.append(package)
     return packages
 
 
@@ -289,6 +294,7 @@ while IFS='|' read -r origin version commit; do
 done < /output/packages.txt
 rm -rf /tmp/lc-source
 rm -f /tmp/aports.tar.gz
+printf 'sources-verified\n' > /output/source-fetch-complete.txt
 '''
 
 DEBIAN_FETCH = r'''set -eu
@@ -313,6 +319,7 @@ while IFS='|' read -r package version; do
   apt-get source --print-uris "$package=$version" > "/output/source-metadata/$package-uris.txt"
   apt-get source --download-only "$package=$version"
 done < /output/packages.txt
+printf 'sources-verified\n' > /output/source-fetch-complete.txt
 '''
 
 
@@ -322,11 +329,34 @@ def collect_os_sources(role, image, report, out, download):
     packages=[]
     if report['distribution']=='alpine':
         origins={}
+        virtual=[]
+        def dependency_name(value): return re.split(r'[<>=~]',value,1)[0]
+        providers={}
+        for package in report['osPackages']:
+            for name in [package['name'],*package.get('provides',[])]:
+                providers.setdefault(dependency_name(name),[]).append(package['name'])
         for package in report['osPackages']:
             if not package['origin'] or not package['commit']:
+                # `apk add --virtual .postgresql-rundeps ...` creates a local,
+                # fileless dependency record. Prove it owns no payload and all
+                # dependencies resolve to installed providers; do not skip a
+                # real unknown package merely because its metadata is missing.
+                dependencies=package.get('dependencies',[])
+                if (package['name'].startswith('.') and package['origin'] in ['',package['name']]
+                    and not package['commit'] and package.get('installedBytes')==0
+                    and package.get('fileEntries')==0 and dependencies
+                    and all(dependency_name(dep) in providers and
+                            any(name!=package['name'] for name in providers[dependency_name(dep)])
+                            for dep in dependencies)):
+                    virtual.append({'name':package['name'],'version':package['version'],
+                                    'installedBytes':0,'fileEntries':0,'dependencies':dependencies,
+                                    'providers':{dep:providers[dependency_name(dep)] for dep in dependencies},
+                                    'reason':'Generated fileless APK dependency metapackage; provider packages remain source-audited.'})
+                    continue
                 raise RuntimeError('Alpine package lacks source origin/commit: '+package['name'])
             origins[package['origin']]=package
         packages=['|'.join([p['origin'],p['version'],p['commit']]) for p in sorted(origins.values(),key=lambda p:p['origin'])]
+        (target/'virtual-metapackages.json').write_text(json.dumps(virtual,indent=2)+'\n',encoding='utf-8')
         script=ALPINE_FETCH
     else:
         packages=sorted(set(p['origin']+'|'+p['sourceVersion'] for p in report['osPackages']))
@@ -335,9 +365,20 @@ def collect_os_sources(role, image, report, out, download):
     (target/'packages.txt').write_text('\n'.join(packages)+'\n',encoding='utf-8')
     (target/'acquire-sources.sh').write_text(script,encoding='utf-8')
     if download:
-        subprocess.run(['docker','run','--rm','--user','0','--entrypoint','/bin/sh',
+        subprocess.run(['docker','run','--rm','-i','--user','0','--entrypoint','/bin/sh',
                         '--mount','type=bind,source='+str(target.resolve())+',target=/output',image,'-s'],
                        input=script.encode(),check=True)
+        marker=target/'source-fetch-complete.txt'
+        if not marker.is_file() or marker.read_text(encoding='utf-8')!='sources-verified\n':
+            raise RuntimeError('Source helper did not execute to completion (missing verified marker): '+role)
+        if report['distribution']=='alpine':
+            for origin in origins:
+                if not (target/'recipes'/origin/'APKBUILD').is_file():
+                    raise RuntimeError('Missing acquired APK source recipe: '+origin)
+            if not any(path.is_file() for path in (target/'distfiles').rglob('*')):
+                raise RuntimeError('No acquired source distfiles: '+role)
+        elif len(list((target/'sources').glob('*.dsc')))<len(packages):
+            raise RuntimeError('Missing acquired Debian source descriptors: '+role)
     return {'status':'PASS' if download else 'NOT RUN','packages':len(packages),
             'method':'exact aports recipe+abuild fetch' if report['distribution']=='alpine' else 'configured signed apt deb-src exact source versions',
             'location':str(target.relative_to(out))}
