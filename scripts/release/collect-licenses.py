@@ -357,7 +357,7 @@ snapshot_apt() {
     "$@" --snapshot "$snapshot_id"
 }
 prepare_snapshot() {
-  [ "$snapshot_ready" = false ] || return
+  [ "$snapshot_ready" = false ] || return 0
   # This dated fallback is Ubuntu-only. Keep the image's current repositories
   # and Signed-By trust roots unchanged; historical indexes live separately.
   grep -Eq '^ID="?ubuntu"?$' /etc/os-release || {
