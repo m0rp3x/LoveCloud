@@ -24,6 +24,7 @@ def main():
         'install archive allowlist', 'shell installation from archive',
         'initial setup, avatars, access and restart', 'private images and removed optimizer',
         'PowerShell installation from archive', 'backend core, native avatars and setup races',
+        'candidate HTTP, files, Range and SignalR',
         'baseline synthetic functional data', 'consistent encrypted backup',
         'restore isolated project and originals', 'PowerShell encrypted backup and restore',
         'update same project and custom volumes', 'candidate recreation persistence',
