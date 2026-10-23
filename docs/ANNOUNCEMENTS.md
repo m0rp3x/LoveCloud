@@ -13,6 +13,18 @@ love notes, plans and wishlists, with a gentle illustrated interface.
 
 Team: **neo_mei**. Repository: https://github.com/m0rp3x/LoveCloud.
 
+## Preview walkthrough
+
+![Interactive preview: cloud, love notes, shared planner and wishlists](assets/interactive-preview.gif)
+
+This short walkthrough uses actual screenshots of the static preview with
+fictional data. It shows the cloud, publishing a note, the shared planner and
+wishlists. It is a sequence of captured interface states, not a performance
+benchmark or a recording of server synchronization. No personal media is used.
+
+Current full-application screenshots are included in both READMEs. Check the
+notice and installation links again before publishing these materials.
+
 ## General English announcement draft
 
 **LoveCloud v0.1.0: a small self-hosted home for two hearts**
