@@ -8,3 +8,5 @@
 *.woff -text
 *.woff2 -text
 frontend/public/fonts/*-OFL.txt -whitespace
+design/assets/fonts/*-OFL.txt -whitespace
+licenses/* -whitespace
