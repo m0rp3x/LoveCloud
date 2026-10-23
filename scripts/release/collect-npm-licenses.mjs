@@ -13,10 +13,14 @@ fs.mkdirSync(output, {recursive:true});
 if (fs.readdirSync(output).length) throw new Error('Notice output must be empty.');
 const files=new Map(), packages=[], clientPackages=[], clientVisited=new Set();
 function copy(file,relative) {
-  const destination=path.join(output,relative);
+  // These are notice/provenance copies, not installed executable packages.
+  // Keep package.json only in /app/node_modules; otherwise SBOM catalogers
+  // mistake this license-only graph superset for installed runtime modules.
+  const noticePath=path.basename(relative)==='package.json'?path.join(path.dirname(relative),'package-info.json'):relative;
+  const destination=path.join(output,noticePath);
   fs.mkdirSync(path.dirname(destination),{recursive:true});
   fs.copyFileSync(file,destination);
-  files.set(relative.split(path.sep).join('/'),{path:relative.split(path.sep).join('/'),sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')});
+  files.set(noticePath.split(path.sep).join('/'),{path:noticePath.split(path.sep).join('/'),sourcePath:relative.split(path.sep).join('/'),sha256:crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')});
 }
 function notices(directory) {
   for (const entry of fs.readdirSync(directory, {withFileTypes:true})) {
