@@ -40,7 +40,7 @@ cleanup() {
   exit "$code"
 }
 trap cleanup EXIT HUP INT TERM
-docker run --rm --mount "type=bind,source=$repository,target=/repository,readonly" --mount "type=bind,source=$password,target=/password,readonly" --mount "type=bind,source=$stage,target=/restore" "$backup_image" --repo /repository --password-file /password restore "$snapshot" --target /restore
+docker run --rm --mount "type=bind,source=$repository,target=/repository" --mount "type=bind,source=$password,target=/password,readonly" --mount "type=bind,source=$stage,target=/restore" "$backup_image" --repo /repository --password-file /password restore "$snapshot" --target /restore
 [ -f "$stage/source/database/database.dump" ] || { echo 'Snapshot has no LoveCloud database.' >&2; exit 1; }
 while IFS= read -r service; do
   case "$service" in db|api|frontend|gateway|caddy|tailscale|'') ;; *) echo 'Snapshot includes an unsupported additional service; prepare a reviewed manual restore before starting containers.' >&2; exit 1;; esac

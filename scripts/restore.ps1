@@ -42,7 +42,7 @@ else{& chmod 700 $stage}
 Push-Location $Target
 $previousEnvironment=@{}
 try {
-    Docker @('run','--rm','--mount',"type=bind,source=$Repository,target=/repository,readonly",'--mount',"type=bind,source=$PasswordFile,target=/password,readonly",'--mount',"type=bind,source=$stage,target=/restore",$backupImage,'--repo','/repository','--password-file','/password','restore',$Snapshot,'--target','/restore')
+    Docker @('run','--rm','--mount',"type=bind,source=$Repository,target=/repository",'--mount',"type=bind,source=$PasswordFile,target=/password,readonly",'--mount',"type=bind,source=$stage,target=/restore",$backupImage,'--repo','/repository','--password-file','/password','restore',$Snapshot,'--target','/restore')
     if(-not (Test-Path -LiteralPath "$stage/source/database/database.dump")){throw 'Snapshot has no LoveCloud database.'}
     $services=@(Get-Content -LiteralPath "$stage/source/install/backup-services.txt")
     foreach($service in $services){if($service -notin @('db','api','frontend','gateway','caddy','tailscale','')){throw 'Snapshot includes an unsupported additional service; prepare a reviewed manual restore before starting containers.'}}
