@@ -1,7 +1,7 @@
 # Optional public HTTPS entry point. Configure domain/DNS before using.
 services:
   caddy:
-    image: caddy:2-alpine
+    image: ${LOVECLOUD_CADDY_IMAGE:-caddy:2-alpine}
     environment:
       LOVE_CLOUD_DOMAIN: ${LOVE_CLOUD_DOMAIN:?Set LOVE_CLOUD_DOMAIN in .env}
     ports:

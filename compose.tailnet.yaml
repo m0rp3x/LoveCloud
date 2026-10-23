@@ -2,7 +2,7 @@
 # Start tailscale first and authorize it, then run the whole stack.
 services:
   tailscale:
-    image: tailscale/tailscale:v1.98.4
+    image: ${LOVECLOUD_TAILSCALE_IMAGE:-tailscale/tailscale:v1.98.4}
     hostname: lovecloud
     environment:
       TS_FORCE_NOISE_443: "true"
@@ -14,6 +14,11 @@ services:
     restart: unless-stopped
     network_mode: host
   gateway:
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?Set the HTTPS Tailscale origin in .env}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - envsubst '$$APP_ORIGIN' < /etc/nginx/nginx.conf > /tmp/lovecloud-nginx.conf && exec nginx -c /tmp/lovecloud-nginx.conf -g 'daemon off;'
     ports:
       - "${LOVE_CLOUD_BIND:-127.0.0.1}:${LOVE_CLOUD_REDIRECT_PORT:-3212}:81"
     volumes:

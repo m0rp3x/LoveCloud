@@ -1,0 +1,19 @@
+name: A little wish for LoveCloud
+description: Propose a focused improvement for loving hearts.
+title: '[Wish]: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What would help your pair?
+      description: Describe the concrete situation and the current limitation.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Desired result and a way to check it
+      description: Keep the scope small; include alternatives if useful.
+    validations:
+      required: true

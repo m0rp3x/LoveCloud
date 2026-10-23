@@ -1,0 +1,27 @@
+name: A cloud needs a little care
+description: Report a reproducible bug using fictional data.
+title: '[Bug]: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 'Security issue? Use [private reporting](https://github.com/m0rp3x/LoveCloud/security/advisories/new). Never attach credentials, setup links, TOTP codes, backups or personal photos.'
+  - type: input
+    id: version
+    attributes:
+      label: Version / image digest
+      description: Include platform and browser when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps using fictional data
+      description: What did you do, what did you expect and what happened?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Redact secrets and personal content from logs/screenshots.

@@ -1,11 +1,12 @@
+import {artifact,secret,testBase} from './environment.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-const base='http://localhost:3213';
+const base=testBase('http://localhost:3213');
 let ready=false;for(let n=0;n<60;n++){try{if((await fetch(base+'/health')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,1000));}assert(ready,'Onboarding API restart readiness');
 const status=await(await fetch(base+'/api/v1/setup/status')).json();assert.equal(status.required,false,'Completed setup stays closed after restart');
-const newToken=(await readFile(new URL('../.artifacts/onboarding-rotation-token',import.meta.url),'utf8')).trim();
+const newToken=(await readFile(artifact('onboarding-rotation-token'),'utf8')).trim();
 const replay=await fetch(base+'/api/v1/setup/exchange',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({token:newToken})});assert([401,403,409,410].includes(replay.status),'New operator token cannot reopen completed setup');
-const credentials=JSON.parse(await readFile(new URL('../.artifacts/onboarding-credentials.json',import.meta.url),'utf8'));
+const credentials=JSON.parse(await readFile(artifact('onboarding-credentials.json'),'utf8'));
 const login=await fetch(base+'/api/v1/auth/login',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify(credentials)});assert.equal(login.status,200);
 const me=await login.json();assert.equal(me.pair.theme,'cloud');assert.equal(me.pair.locale,'en');assert(me.user.avatarUrl&&me.pair.avatarUrl);
 const cookie=login.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');

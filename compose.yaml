@@ -2,7 +2,7 @@ name: lovecloud
 
 services:
   db:
-    image: postgres:18-alpine
+    image: ${LOVECLOUD_POSTGRES_IMAGE:-postgres:18-alpine}
     environment:
       POSTGRES_DB: lovecloud
       POSTGRES_USER: lovecloud
@@ -20,9 +20,7 @@ services:
     networks: [private]
 
   api:
-    image: lovecloud-api:local
-    build:
-      context: ./backend
+    image: ${LOVECLOUD_API_IMAGE:-ghcr.io/m0rp3x/lovecloud-api:0.1.0}
     environment:
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
@@ -47,9 +45,7 @@ services:
     networks: [private]
 
   frontend:
-    image: lovecloud-frontend:local
-    build:
-      context: ./frontend
+    image: ${LOVECLOUD_FRONTEND_IMAGE:-ghcr.io/m0rp3x/lovecloud-frontend:0.1.0}
     environment:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
@@ -62,7 +58,7 @@ services:
     networks: [private]
 
   gateway:
-    image: nginx:alpine
+    image: ${LOVECLOUD_NGINX_IMAGE:-nginx:alpine}
     ports:
       - "${LOVE_CLOUD_BIND:-127.0.0.1}:${LOVE_CLOUD_PORT:-3211}:80"
     volumes:

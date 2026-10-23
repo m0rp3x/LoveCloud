@@ -14,7 +14,7 @@
 
 ## Работать над своим облаком
 
-Запуск описан в [README](README.md#start). Технические подробности — в
+Запуск описан в [README](README.md). Технические подробности — в
 [гайде по размещению](docs/SELF_HOSTING.md) и [документации API](docs/API.md).
 Используйте отдельную установку с вымышленной парой для разработки и скриншотов.
 
@@ -39,13 +39,15 @@ npm run build --prefix frontend
 Для связанных изменений API и хранилища в PowerShell7 с Node.js24:
 
 ```powershell
-docker compose build
-./scripts/test.ps1
-./scripts/test-onboarding.ps1
+./scripts/test.ps1 -ImagesFile /path/to/candidate/compose.images.yaml
+./scripts/test-onboarding.ps1 -ImagesFile /path/to/candidate/compose.images.yaml
 ```
 
-Сквозные тесты создают отдельные одноразовые проекты на3212/3213.
-Они используют синтетические данные. Не направляйте их на своё облако.
+Укажите digest lock из candidate workflow именно вашего коммита.
+Эти сквозные тесты проверяют готовые candidate-образы, а не изменённые
+исходники или произвольный локальный dev-тег. Они создают одноразовые
+проекты на 3212/3213 и используют синтетические данные. Не направляйте
+их на своё облако. Запуск исходников описан в [DEVELOPMENT](docs/DEVELOPMENT.md).
 
 Проверяйте сценарии, которые меняете: успешный результат, ошибку, пустое
 состояние и права доступа. Миграции должны сохранять существующие данные.
@@ -71,5 +73,20 @@ feat(feed): 💌 add replies to love notes
 Укажите миграции или действия для обновления, если они нужны.
 Сообщения коммитов, включая тело и BREAKING CHANGE, пишем только на английском.
 Подписывайте изменения своим Git-профилем.
+
+## Права на вклад / Contribution rights
+
+Отправляя вклад для включения в LoveCloud, вы подтверждаете, что имеете право
+предоставить его на условиях Apache-2.0. Сохраняйте лицензии и атрибуцию
+сторонних материалов; не присылайте чужие фотографии без разрешения.
+Передачи авторских прав или отдельного CLA проект не требует.
+
+By intentionally submitting a contribution for inclusion, you confirm that you
+have the right to provide it under Apache-2.0. Preserve third-party notices and
+identify the source/license of any bundled material. No separate CLA or
+copyright assignment is required.
+
+See [SECURITY](SECURITY.md) for private vulnerability reports and
+[small contribution ideas](docs/ANNOUNCEMENTS.md#contribution-ideas).
 
 С любовью к деталям, команда neo_mei. 🍓
