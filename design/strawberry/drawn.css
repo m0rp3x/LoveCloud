@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Golos+Text:wght@400;500;600;700&display=swap');
 /* LoveCloud drawn desk. Authored vector stationery; only the berry workspace. */
 body[data-theme=berry]{--bg:#fbd8e7;--surface:#fffdf4;--surface-alt:#fff0f5;--ink:#71364f;--muted:#94667b;--accent:#ca3970;--accent-soft:#f8c3d9;--line:#dbadc0;--radius:5px;--font:'Golos Text',sans-serif;--shadow:3px 4px 0 #ba73951a;background-color:#fbd8e7;background-image:radial-gradient(#d8a5ba 1px,transparent 1px),linear-gradient(90deg,transparent 49%,#fff8fc30 49%,#fff8fc30 51%,transparent 51%),linear-gradient(transparent 49%,#fff8fc30 49%,#fff8fc30 51%,transparent 51%);background-size:12px 12px,72px 72px,72px 72px;color:var(--ink)}
 body[data-theme=berry] .shell-app{grid-template-columns:198px minmax(0,1fr);grid-template-rows:86px minmax(0,1fr) 29px;isolation:auto}

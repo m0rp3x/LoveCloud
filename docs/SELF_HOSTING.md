@@ -1,67 +1,74 @@
-# Свой маленький дом для двоих 🏡
+# Install a little home for two / Установка
 
-LoveCloud размещается на вашем компьютере или сервере через Docker Compose.
-Одна установка предназначена для одной пары.
+Use the [v0.1.0 installation archive](https://github.com/m0rp3x/LoveCloud/releases/tag/v0.1.0), not a source archive. It contains production Compose, proxy configurations, operational scripts, image digest lock and licenses. No `backend/` or `frontend/` is needed to run it.
 
-## Первый запуск
+## Requirements
 
-Нужны Docker Engine / Docker Desktop и Docker Compose v2.
-Для shell-установщика также нужен `openssl`.
+- Linux amd64 Docker host; Docker Engine or Docker Desktop in Linux-container mode.
+- Docker Compose v2 with `up --wait`; internet access to the image registries.
+- POSIX shell and `openssl` for `init.sh`, or PowerShell 7 for `init.ps1`.
+- Sufficient disk for originals, PostgreSQL, staging during upload and backups.
+- Backup/restore scripts additionally require Python 3 (standard library); no Node.js, Git or .NET SDK is needed for normal installation.
+
+Other architectures are not declared supported without an actual release test. There is no universal promised CPU/RAM capacity or install time.
+
+## Verify and extract
+
+Download the archive and `SHA256SUMS` from the same release. Verify before running scripts:
+
+```sh
+sha256sum -c SHA256SUMS --ignore-missing
+tar -xzf lovecloud-v0.1.0-install.tar.gz
+```
 
 ```powershell
-./scripts/init.ps1 -Start
+Get-FileHash ./lovecloud-v0.1.0-install.zip -Algorithm SHA256
+Expand-Archive ./lovecloud-v0.1.0-install.zip -DestinationPath ./lovecloud
 ```
+
+Compare the PowerShell hash with its exact entry in `SHA256SUMS`. Enter the extracted installation directory (the directory containing `compose.yaml`).
+
+## First start
 
 ```sh
 sh scripts/init.sh --start
 ```
 
-Установщик создаёт случайные секреты, собирает контейнеры, ждёт готовности API
-и показывает одноразовую ссылку на мастер. По умолчанию адрес —
-`http://localhost:3211`, bind — `127.0.0.1`; PostgreSQL наружу не публикуется.
-Устанавливать Node.js или .NET на хост для работы приложения не требуется.
-
-В мастере выбирают язык, название пары, дату, часовой пояс, аватарки,
-два аккаунта, оформление и пароль администратора.
-Первый партнёр входит сразу; второй меняет первоначальный пароль при первом входе.
-Администратор занимает третий слот и управляет установкой и аккаунтами.
-
-## Одноразовая ссылка
-
-Копия ссылки находится в `.secrets/setup-link.txt`; секрет — в `.secrets/setup_token`.
-Повторный запуск установщика сохраняет существующие секреты.
-После завершения мастер закрывается окончательно.
-
-Секрет передаётся в URL fragment после `#`, затем убирается из адреса браузера.
-Для продолжения используется отдельная HttpOnly setup-cookie. После перезагрузки
-поля и пароли вводятся заново; загруженные аватарки своей сессии можно удалить
-и прикрепить повторно. Setup-сессия действует24часа.
-
-Если браузерная сессия потеряна до завершения:
-
 ```powershell
-./scripts/init.ps1 -ResetSetupToken -Start
+./scripts/init.ps1 -Start
 ```
+
+The installer creates private secrets on a fresh installation, downloads ready-made images, runs Compose with `--no-build`, waits for health and prints a one-time setup link. The link is also saved in `.secrets/setup-link.txt`. Do not share it, `.secrets/`, cookies or recovery codes in an issue.
+
+[Complete setup](SETUP.md). Re-running the installer preserves secrets and data. If an existing installation is missing its database secret, **restore that secret from a backup**; a newly generated password would not change the existing database password. The installer stops rather than hiding this condition.
+
+The default endpoint is `http://localhost:3211`, bound to `127.0.0.1`. PostgreSQL is not published. Non-root API/frontend processes must be able to read their mounted secrets; use installer-created permissions, not blanket `chmod 777`.
+
+## Effective configuration
+
+The installation's `.env` records its effective settings: Compose project, Compose file list, address, cookie security and supported overrides. Preserve it during restart, backup, update and recovery. Release archives include `compose.images.yaml`, which pins the tested image digests. Normal production Compose has no `build:` sections.
+
+Keep the original project name. Existing volumes can use a custom Compose prefix or explicit volume names. **Do not rename the project to `lovecloud-v0.1.0`**. If invoking Compose with explicit `-p`, `-f` or external variables, use the same values for every operation and record them in the installation configuration.
 
 ```sh
-sh scripts/init.sh --reset-setup-token --start
+docker compose config --images
+docker compose ps
+docker compose logs --tail=80 api frontend gateway
 ```
 
-Это не сбрасывает уже настроенную пару. При завершённом мастере новый токен
-не даёт снова создать аккаунты. Для автоматизированных проверок используйте
-`-QuietSecrets` / `--quiet-secrets`, чтобы ссылка не попадала в вывод.
+`docker compose config` without `--images` may contain sensitive paths/settings: review and redact before sharing. A restart does not require rebuilding:
 
-Совместимый bootstrap-вход `admin` использует `.secrets/bootstrap_password`.
-Его первая ручная смена пароля отменяет незавершённый мастер; для новой пары
-предпочтителен обычный путь через установочную ссылку.
+```sh
+docker compose up -d --no-build --wait
+```
+
+Do not run `docker compose down -v` on a real installation: it deletes volumes.
 
 <a id="https"></a>
 
-## Домен с HTTPS
+## HTTPS on your own domain
 
-1. Скопируйте `.env.example` в `.env`.
-2. Направьте DNS своего домена на сервер и откройте входящие80/443 для Caddy.
-3. Добавьте в `.env` свои значения:
+Point your domain at the host. Caddy needs inbound 80/443, outbound certificate access, and a persistent certificate volume. Add to `.env`, using your real domain:
 
 ```dotenv
 LOVE_CLOUD_DOMAIN=cloud.example.com
@@ -69,91 +76,18 @@ APP_ORIGIN=https://cloud.example.com
 SECURE_COOKIES=true
 ```
 
-4. Запустите установщик с `-Start` / `--start`: он подключит
-   `compose.https.yaml` и выдаст ссылку с вашим доменом.
+Run the installer with `--start` / `-Start`; it persists the HTTPS override along with the digest lock. Check that the resulting Compose list contains base, image lock and `compose.https.yaml`, then open the HTTPS setup link. Preserve Caddy's volumes and configuration during updates.
 
-Caddy выдаёт и обновляет сертификат. Пример `cloud.example.com` нужно заменить
-на собственный домен. Секреты не хранятся в `.env`.
+For a reverse proxy you manage yourself, proxy **all** `/api/v1`, `/hubs` (including WebSocket upgrade) and frontend paths through the gateway, set the exact external `APP_ORIGIN` and `SECURE_COOKIES=true`, and keep direct API/database ports private. Avoid caching authenticated responses. An origin mismatch is a configuration error, not a reason to disable CSRF.
 
-Для обновлений этой конфигурации используйте те же compose-файлы:
+## Private remote access
 
-```sh
-docker compose -f compose.yaml -f compose.https.yaml up -d --build
-```
+[Tailscale](TAILSCALE.md) is an optional Linux-only topology with a dedicated node and HTTPS Serve. It is not enabled by the normal local installer. No VPS is needed for the static [interactive preview](https://m0rp3x.github.io/LoveCloud/).
 
-Для частного доступа через tailnet есть [отдельная инструкция Tailscale](TAILSCALE.md).
-
-## Обновления и хранение
-
-Для базовой локальной установки:
-
-```sh
-docker compose up -d --build
-docker compose logs --tail=80 api frontend gateway
-docker compose stop
-docker compose start
-```
-
-Миграции применяются при запуске. При обновлении HTTPS/Tailscale сохраняйте
-свой набор compose-файлов и переменные окружения.
-
-| Том | Что хранит |
-| --- | --- |
-| `lovecloud_pgdata` | PostgreSQL: аккаунты, настройки и записи. |
-| `lovecloud_files` | Оригиналы файлов и аватарки. |
-| `lovecloud_keys` | Ключи DataProtection для TOTP-секретов. |
-| `lovecloud_tailnet_state` | Личность и настройки отдельного узла, если используется Tailscale. |
-
-При другом Compose project name префикс имён томов меняется.
-Обычный `docker compose down` оставляет тома; **`down -v` удаляет данные**.
-
-### Доступ и приватность
-
-Максимум три аккаунта закреплён ограничениями БД. Открытой регистрации нет.
-Обычные файлы доступны партнёрам через авторизованный API, личные — после
-дополнительной TOTP-проверки. Администратор не получает обход личного раздела
-через интерфейс приложения.
-
-Это серверное хранение без E2EE: оператор хоста имеет доступ к диску и ключам.
-Шифрование диска настраивается отдельно. Сохраняйте БД, файлы, секреты и key ring
-согласованно; потеря ключей не позволяет расшифровать существующие TOTP-секреты.
-
-На Windows установщик ограничивает доступ к файлам секретов текущим владельцем.
-На Linux каталог `.secrets` имеет права0700, ссылка и прочие локальные секреты —0600.
-Четыре файла, подключаемые в контейнеры, имеют0644: это позволяет API/PostgreSQL
-читать отдельные read-only mounts; закрытый родитель ограничивает доступ на хосте.
+The preview is **not** your installed cloud. It contains fictional data, simulated uploads/TOTP and per-tab state, with no server-side synchronization.
 
 <a id="backups"></a>
 
-## Беречь воспоминания: резервные копии
+## Keep your home
 
-Готовый скрипт для PowerShell7:
-
-```powershell
-./scripts/backup.ps1
-```
-
-Он кратковременно останавливает API, делает согласованный `pg_dump`, сохраняет
-файлы, key ring, код/конфигурацию и секреты в зашифрованный restic repository
-`backups/restic`, проверяет его и запускает API обратно.
-
-Сохраните отдельную безопасную копию `.secrets/backup_password` и вынесите копию
-repository с сервера. Без backup password восстановить repository не получится.
-Если используете Tailscale, его том `lovecloud_tailnet_state` сохраняйте отдельно:
-базовый скрипт резервирует тома данных приложения, а не сетевую личность узла.
-
-На Linux без PowerShell ту же последовательность можно выполнять средствами
-оператора: остановить запись, сделать `pg_dump -Fc`, сохранить файловые тома,
-key ring и конфигурацию в зашифрованную копию, затем возобновить API.
-
-### Восстановление
-
-Restic `restore` возвращает `/source/database/database.dump`, `/source/files`,
-`/source/keys` и `/source/install`. В остановленной установке восстановите БД
-через `pg_restore`, файловые тома, ключи и конфигурацию/секреты. Для файлов
-и ключей сохраните владельца UID1654. После восстановления отзовите старые сессии.
-Для Tailscale дополнительно верните его state либо заново авторизуйте узел.
-
-Не запускайте API с пустым key ring вместо восстановленного.
-Перед обновлением полезно проверить, что резервная копия открывается
-и действительно восстанавливается в отдельную тестовую установку.
+[Backup and restore](BACKUP_RESTORE.md) · [Update](UPDATE.md) · [Troubleshooting](TROUBLESHOOTING.md) · [Access model](LIMITATIONS.md) · [Architecture](ARCHITECTURE.md).

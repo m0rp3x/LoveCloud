@@ -16,8 +16,8 @@ sh scripts/init.sh --quiet-secrets
 ## 2. Добавить узел
 
 ```sh
-docker compose -f compose.yaml -f compose.tailnet.yaml up -d tailscale
-docker compose -f compose.yaml -f compose.tailnet.yaml exec tailscale \
+docker compose -f compose.yaml -f compose.images.yaml -f compose.tailnet.yaml up -d tailscale
+docker compose -f compose.yaml -f compose.images.yaml -f compose.tailnet.yaml exec tailscale \
   tailscale up --hostname=lovecloud --accept-dns=false --timeout=0
 ```
 
@@ -28,9 +28,9 @@ docker compose -f compose.yaml -f compose.tailnet.yaml exec tailscale \
 ## 3. Настроить HTTPS
 
 ```sh
-docker compose -f compose.yaml -f compose.tailnet.yaml exec -T tailscale \
+docker compose -f compose.yaml -f compose.images.yaml -f compose.tailnet.yaml exec -T tailscale \
   tailscale serve --bg --yes --https=443 http://127.0.0.1:3211
-docker compose -f compose.yaml -f compose.tailnet.yaml exec -T tailscale \
+docker compose -f compose.yaml -f compose.images.yaml -f compose.tailnet.yaml exec -T tailscale \
   tailscale serve --bg --yes --http=80 http://127.0.0.1:3212
 ```
 
@@ -40,7 +40,7 @@ docker compose -f compose.yaml -f compose.tailnet.yaml exec -T tailscale \
 Добавьте в `.env`, подставив этот адрес:
 
 ```dotenv
-COMPOSE_FILE=compose.yaml:compose.tailnet.yaml
+COMPOSE_FILE=compose.yaml:compose.images.yaml:compose.tailnet.yaml
 APP_ORIGIN=https://lovecloud.your-tailnet.ts.net
 SECURE_COOKIES=true
 ```
@@ -53,7 +53,7 @@ SECURE_COOKIES=true
 
 ```sh
 sh scripts/init.sh --quiet-secrets
-docker compose up -d --build
+docker compose up -d --no-build --wait
 ```
 
 Повторный init без `--start` обновит `.secrets/setup-link.txt` с вашим HTTPS-доменом,
@@ -65,9 +65,9 @@ docker compose up -d --build
 
 ## Обновлять и сохранять
 
-Благодаря `COMPOSE_FILE` в `.env` обычный `docker compose up -d --build`
+Благодаря `COMPOSE_FILE` в `.env` обычный `docker compose up -d --no-build --wait`
 использует оба файла. При явном `-f` всегда указывайте и base, и tailnet compose.
-Для этого варианта init используется без `--start`; стек запускается командой выше.
+Установщик сохраняет этот набор Compose-файлов. Повторный запуск с `--start` должен использовать те же файлы и digest lock; проверяйте `docker compose config --images`.
 
 Узел работает в userspace-режиме с host network и случайным UDP-портом.
 TUN и NET_ADMIN ему не нужны. Вход nginx опубликован только на loopback3211/3212;

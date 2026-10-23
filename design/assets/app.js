@@ -49,9 +49,9 @@
     dots.addEventListener('click', e => {const b=e.target.closest('[data-slide-to]'); if(b){at=Number(b.dataset.slideTo);update();}}); update();
   });
   const photos = [
-    ['Море в сентябре.jpg', 'https://images.unsplash.com/photo-1471922694854-ff1b63b20054?auto=format&fit=crop&w=1100&q=85', 'Море и скалистый берег'],
-    ['Утро у моря.jpg', 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1100&q=85', 'Песчаный пляж у бирюзового моря'],
-    ['Букет без повода.jpg', 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1100&q=85', 'Нежные цветы в солнечном свете']
+    ['Море в сентябре.jpg', '../strawberry/illustrations/cottage.svg', 'Море и скалистый берег'],
+    ['Утро у моря.jpg', '../strawberry/illustrations/cottage.svg', 'Песчаный пляж у бирюзового моря'],
+    ['Букет без повода.jpg', '../strawberry/illustrations/cottage.svg', 'Нежные цветы в солнечном свете']
   ];
   const folderNames = ['Поездки', 'Наши будни', 'Маленькие праздники']; let currentFolder = '';
   const search = document.querySelector('[data-file-search]');

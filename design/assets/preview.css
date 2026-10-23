@@ -1,0 +1,11 @@
+@font-face{font-family:'Rubik';src:url('fonts/Rubik.ttf') format('truetype');font-weight:300 900;font-display:swap}
+@font-face{font-family:'Caveat';src:url('fonts/Caveat.ttf') format('truetype');font-weight:400 700;font-display:swap}
+@font-face{font-family:'Golos Text';src:url('fonts/GolosText.ttf') format('truetype');font-weight:400 900;font-display:swap}
+body{padding-top:76px!important}
+.preview-banner{box-sizing:border-box;position:fixed;inset:0 0 auto;z-index:100;background:#fff4da;color:#63384f;border-bottom:2px dashed #c68aa5;min-height:76px;padding:10px 20px;display:flex;align-items:center;gap:16px;font:13px/1.45 'Golos Text',sans-serif}
+.preview-banner p{margin:0;max-width:850px}.preview-banner div{display:flex;gap:8px;margin-left:auto;flex-shrink:0}
+.preview-banner a,.preview-banner button{font:inherit;font-weight:650;border:1px solid #a94c78;border-radius:8px;padding:8px 12px;background:#fff;color:#71324f;cursor:pointer;text-decoration:none;min-height:40px}
+.preview-banner a{background:#a53a68;color:#fff}.preview-banner :focus-visible{outline:3px solid #722843;outline-offset:2px}
+body .shell-app{height:calc(100dvh - 76px)!important;min-height:0!important}
+body .shell-sidebar{padding-bottom:34px}.shell-nav-item[hidden]{display:none!important}
+@media(max-width:700px){body{padding-top:143px!important}.preview-banner{min-height:143px;padding:9px 12px;gap:6px;display:block;font-size:11px}.preview-banner div{margin-top:7px}.preview-banner a,.preview-banner button{padding:6px 10px;min-height:34px}body .shell-app{height:calc(100dvh - 143px)!important}.shell-sidebar{top:143px!important}}

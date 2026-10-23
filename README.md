@@ -1,208 +1,70 @@
-<p align="center">
-  <img src="docs/assets/banner.svg" alt="LoveCloud — self-hosted решение от команды neo_mei для любящих сердец" width="100%">
-</p>
+<p align="center"><img src="docs/assets/banner.svg" alt="LoveCloud — a little home for two" width="100%"></p>
+<p align="center"><strong>Your memories, little plans and big feelings, in your own cloud.</strong><br>A self-hosted home for loving hearts, from the <strong>neo_mei</strong> team.</p>
+<p align="center"><a href="README.ru.md">Русский</a> · <a href="https://m0rp3x.github.io/LoveCloud/">Interactive preview</a> · <a href="https://github.com/m0rp3x/LoveCloud/releases/tag/v0.1.0">Install v0.1.0</a> · <a href="docs/SELF_HOSTING.md">Hosting guide</a></p>
 
-<p align="center">
-  <strong>Ваши воспоминания, маленькие планы и большие чувства — в одном облаке.</strong><br>
-  Self-hosted решение от команды <strong>neo_mei</strong> для любящих сердец.
-</p>
+![LoveCloud: hand-drawn envelopes in a fictional couple’s cloud](docs/assets/cloud.jpg)
 
-<p align="center">
-  <a href="#preview">Заглянуть внутрь</a> ·
-  <a href="#start">Поселиться в облаке</a> ·
-  <a href="docs/SELF_HOSTING.md">Гайд по размещению</a> ·
-  <a href="docs/COMMIT_STYLE.md">Письма в историю проекта</a>
-</p>
+**v0.1.0 is an early release for one couple and one server.** Linux amd64 is the release target. There is no end-to-end encryption, resumable upload or generated thumbnail service. Read the [access model and limits](docs/LIMITATIONS.md) before adding personal memories.
 
-<p align="center">
-  <code>Next.js</code> &nbsp; <code>C# / ASP.NET Core</code> &nbsp; <code>PostgreSQL</code> &nbsp; <code>Docker</code><br>
-  🍓 Три темы &nbsp; 💌 Два любящих человека &nbsp; 🌍 Русский / English
-</p>
+## A little place for a big “us” ♡
 
----
+LoveCloud brings files, a social feed, shared plans and wishlists into a private space you run yourself. Drawn paper envelopes and floating hearts make a familiar cloud feel like your own desk. Choose Strawberry Milk, Rose Drive or Cloud Atelier; the full application speaks English and Russian.
 
-## Маленькое место для большого «мы» ♡
+**[Try the interactive preview](https://m0rp3x.github.io/LoveCloud/)** without registration. It is a static prototype with fictional data and per-tab changes. File upload and code verification are simulated; it has no backend or two-user synchronization. It is separate from the real application you install.
 
-LoveCloud — личное пространство одной пары на собственном сервере.
-Здесь фотографии живут в бумажных конвертах, послания складываются в ленту,
-а рядом с общими делами всегда найдётся место маленькому желанию.
-
-Можно хранить целую историю отношений — или оставить короткое «я рядом».
-Своё облако вы размещаете сами, а его название, аватарки и настроение выбираете вдвоём.
-
-<a id="preview"></a>
-
-## Загляните в наше облако 🍓
-
-<p align="center">
-  <a href="docs/assets/cloud.jpg"><img src="docs/assets/cloud.jpg" alt="Облако LoveCloud: рисованные конверты, папки и общее пространство пары" width="100%"></a>
-  <br><sub>Клубничное молоко — рисованный стол, бумажные конверты и плавающие сердечки.</sub>
-</p>
-
-<table>
-  <tr>
-    <td width="50%"><a href="docs/assets/feed.jpg"><img src="docs/assets/feed.jpg" alt="Социальная лента посланий с сердечками и ответами"></a></td>
-    <td width="50%"><a href="docs/assets/planner.jpg"><img src="docs/assets/planner.jpg" alt="Общий планнер: дела, сроки и ответственные"></a></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>💌 Сказать что-нибудь тёплое</strong><br><sub>Своя маленькая социальная лента.</sub></td>
-    <td align="center"><strong>🗓️ Запланировать наше «вместе»</strong><br><sub>От любимой пасты до большого путешествия.</sub></td>
-  </tr>
-  <tr>
-    <td><a href="docs/assets/wishes.jpg"><img src="docs/assets/wishes.jpg" alt="Личные вишлисты пары: подарки, впечатления и маленькие радости"></a></td>
-    <td><a href="docs/assets/themes.jpg"><img src="docs/assets/themes.jpg" alt="Выбор трёх тем: Клубничное молоко, Rose Drive, Cloud Atelier"></a></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>🎁 Беречь маленькие желания</strong><br><sub>И тихонько готовить сюрпризы.</sub></td>
-    <td align="center"><strong>🎀 Выбрать своё настроение</strong><br><sub>Три оформления одного пространства.</sub></td>
-  </tr>
-</table>
-
-<sub>Все скриншоты сняты в отдельной демо-установке. Имена, записи и иллюстрации вымышлены; личные данные не использовались. Изображения открываются в полном размере по нажатию.</sub>
-
-## Что поселится внутри
-
-| Для ваших… | Что умеет LoveCloud |
+| Keep together | What the installed app does |
 | --- | --- |
-| 📷 **Воспоминаний** | Настоящие файлы, вложенные папки, альбомы, поиск, избранное и недавние. Сетка, список и рисованный стол. |
-| ✉️ **Маленьких сокровищ** | Конверты объединяют выбранные материалы без копирования оригиналов. Корзина позволяет вернуть удалённое в течение 30 дней. |
-| 💌 **Слов друг другу** | Социальная лента с публикациями, фотографиями, ответами, сердечками и закреплениями. Обновления приходят через SignalR. |
-| 🗓️ **Общих планов** | Список, неделя и канбан. Даты, ответственные, приоритеты и повторяющиеся дела. |
-| 🎁 **Желаний и сюрпризов** | Вишлист каждого партнёра: заметки, ссылки и цены. Подарок можно зарезервировать, и автор желания этого не увидит. |
-| 🔐 **Самого личного** | Отдельное хранилище с TOTP через Google Authenticator или совместимое приложение, QR, recovery codes и временным доступом. |
+| 📷 Memories | Real files, nested folders, albums, search, favorites, recent items, desk/grid/list views. |
+| ✉️ Little treasures | Envelopes organize files; albums reference originals. Trash can be restored before its 30-day expiry. |
+| 💌 Words | A social feed with posts, attachments, replies, hearts, pins and SignalR updates. |
+| 🗓️ Plans | Shared tasks, list/week/kanban views, assignees, deadlines, priorities and recurrence. |
+| 🎁 Wishes | Each partner’s wishlist, notes, links and prices; gift reservations are hidden from the wish’s author. |
+| 🔐 Private moments | A shared protected area with each partner’s TOTP, recovery codes and temporary access. |
 
-Ещё немного нежности: общая аватарка пары, личные аватарки, русский и английский
-интерфейс, локальные шрифты, мобильная раскладка и возможность остановить анимации.
+<table><tr><td><img src="docs/assets/feed.jpg" alt="Social feed"></td><td><img src="docs/assets/planner.jpg" alt="Shared planner"></td></tr><tr><td><img src="docs/assets/wishes.jpg" alt="Wishlists"></td><td><img src="docs/assets/themes.jpg" alt="Three themes"></td></tr></table>
 
-### Три настроения одного дома
+Screenshots show a separate synthetic installation, never a real couple’s data. [Media provenance](docs/assets/README.md).
 
-| 🍓 Клубничное молоко | 🌷 Rose Drive | ☁️ Cloud Atelier |
-| --- | --- | --- |
-| [![Клубничное молоко](docs/assets/cloud.jpg)](docs/assets/cloud.jpg) | [![Rose Drive](docs/assets/rose-drive.jpg)](docs/assets/rose-drive.jpg) | [![Cloud Atelier](docs/assets/cloud-atelier.jpg)](docs/assets/cloud-atelier.jpg) |
-| Рисованный стол, клубничные оттенки и конверты. | Спокойный розовый каталог с аккуратной навигацией. | Воздушная лавандовая библиотека с мягкими карточками. |
+## Move into your cloud 🏡
 
-Язык, тему и аватарки можно менять после установки. Ваши материалы останутся на месте.
+Download **lovecloud-v0.1.0-install.tar.gz** or **.zip** from the [release](https://github.com/m0rp3x/LoveCloud/releases/tag/v0.1.0), verify its checksum, extract it and open a terminal there. Normal installation downloads ready-made, digest-pinned images. No Git, Node.js or .NET SDK is needed.
 
-<a id="start"></a>
-
-## Поселиться в облаке 🏡
-
-Нужны **Docker Engine / Docker Desktop и Docker Compose v2**.
-Node.js и .NET на сервере устанавливать не требуется.
-Скачайте исходники и откройте терминал в папке проекта.
-
-**Windows · PowerShell**
-
-```powershell
-./scripts/init.ps1 -Start
-```
-
-**Linux / macOS · shell**
+Requirements: Docker Engine (or Docker Desktop in Linux-container mode), Compose v2 with `--wait` support, a supported shell and internet access to GHCR / Docker registries. The shell installer needs `openssl`; PowerShell requires version 7. Supported release images are **linux/amd64**; macOS/arm64 native support has not been verified.
 
 ```sh
 sh scripts/init.sh --start
 ```
 
-На Linux / macOS для генерации секретов нужен `openssl`.
-
-Установщик поднимет Docker и выдаст личную одноразовую ссылку:
-
-```text
-http://localhost:3211/setup#token=<ваш-одноразовый-секрет>
-```
-
-Откройте её и пройдите маленькие шаги к общему дому:
-
-1. Выберите **Русский / English**.
-2. Придумайте название пары, добавьте дату вашей истории и аватарку.
-3. Создайте свой аккаунт и аккаунт второй половинки.
-4. Выберите оформление и отдельный пароль администратора.
-5. Откройте своё пространство. Первые воспоминания ждут вас. ♡
-
-В облаке ровно **три аккаунта**: администратор и два партнёра.
-Открытой регистрации нет. Второй партнёр меняет первоначальный пароль при первом входе.
-После завершения одноразовая ссылка закрывается навсегда.
-
-Новая установка пустая: фотографии и записи со скриншотов автоматически не добавляются.
-
-<details>
-<summary><strong>Письмо потерялось? Где найти ссылку и как продолжить установку</strong></summary>
-
-Ссылка сохранена в `.secrets/setup-link.txt`. Не публикуйте её или содержимое `.secrets/`.
-Перезагрузка страницы сохраняет setup-сессию браузера; поля и пароли потребуется ввести заново.
-
-Если до завершения установки потерян доступ к этому браузеру, выдайте новый секрет:
-
 ```powershell
-./scripts/init.ps1 -ResetSetupToken -Start
+./scripts/init.ps1 -Start
 ```
 
-```sh
-sh scripts/init.sh --reset-setup-token --start
-```
+The installer waits for readiness and prints a one-time setup link, also stored in `.secrets/setup-link.txt`. Keep it private. Choose RU/EN, name your pair, add avatars, create both partner accounts, choose a theme and set the administrator password. The first partner signs in immediately; the second changes their initial password at first login. There are exactly **three accounts: administrator and two partners**. After completion the setup link cannot reopen setup. A new installation contains no demo content.
 
-Новый секрет не открывает уже настроенное облако заново.
-Подробности — в [гайде по размещению](docs/SELF_HOSTING.md).
+By default the app binds to loopback at `http://localhost:3211`. For two-person remote use, configure [HTTPS](docs/SELF_HOSTING.md#https) or [Tailscale](docs/TAILSCALE.md). Plain HTTP is for local access; do not expose it directly on the internet.
 
-</details>
+## Keep your memories safe
 
-## Ваш сервер, ваши воспоминания 🔐
+The server operator can access stored data and keys. TOTP is an additional application access check, **not E2EE**. Keep an encrypted, off-host backup of PostgreSQL, file/avatars storage, DataProtection keys, secrets and the effective installation configuration. Store the backup password separately.
 
-По умолчанию облако доступно на `http://localhost:3211` только с вашего компьютера.
-Для доступа вдвоём разместите его на своём сервере через
-[собственный HTTPS-домен](docs/SELF_HOSTING.md#https) или [Tailscale](docs/TAILSCALE.md).
+[Install and configure](docs/SELF_HOSTING.md) · [First setup](docs/SETUP.md) · [Update](docs/UPDATE.md) · [Backup and restore](docs/BACKUP_RESTORE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
 
-TOTP защищает вход в личный раздел. Это серверная модель хранения: владелец сервера
-имеет доступ к диску и ключам; сквозного шифрования E2EE нет.
-База, файлы и ключи сохраняются в постоянных Docker-томах.
+## Woven from 🧵
 
-Файлы — до **5 GiB**, общая квота — **100 GiB**, личный раздел — до **20 GiB**.
-Приложение пока не делает отдельные миниатюры, видеотранскодирование и возобновляемые загрузки по частям.
-Видео и аудио воспроизводятся при поддержке формата браузером.
+Next.js / React / TypeScript → nginx → ASP.NET Core 10 / SignalR → PostgreSQL 18 and persistent file/key volumes. A single API process handles live updates and cleanup. [Architecture and data locations](docs/ARCHITECTURE.md) · [API](docs/API.md) · [Develop from source](docs/DEVELOPMENT.md).
 
-**Берегите резервные копии.** [Как обновлять, сохранять и восстанавливать облако →](docs/SELF_HOSTING.md#backups)
+## Add a little love 💌
 
-## Из чего соткано облако 🧵
-
-```text
-Браузер пары
-    ↓
-nginx / HTTPS
-    ├── Next.js · React · TypeScript
-    └── ASP.NET Core · C# · SignalR
-              ├── PostgreSQL
-              ├── файлы
-              └── ключи DataProtection
-```
-
-| Часть | Стек |
-| --- | --- |
-| Интерфейс | Next.js 16, React 19, TypeScript, SWR |
-| Сервер | C# / ASP.NET Core 10, Entity Framework Core, SignalR |
-| Данные | PostgreSQL 18, файловое хранилище, постоянные Docker-тома |
-| Размещение | Docker Compose, nginx, опционально Caddy или Tailscale |
-
-Это пространство **одной пары**. Многоарендности и публичной регистрации в нём нет.
-
-## Добавить облаку немного любви 💌
-
-Есть идея, нашли ошибку или хотите помочь? Загляните в [CONTRIBUTING.md](CONTRIBUTING.md).
-Изменения интерфейса сопровождаем скриншотами, а новые возможности — понятным описанием.
-
-В истории проекта оставляем маленькие, содержательные письма:
+[Contributing](CONTRIBUTING.md) · [Romantic English commit style](docs/COMMIT_STYLE.md) · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md) · [Report a vulnerability privately](SECURITY.md)
 
 ```text
 feat(feed): 💌 add replies to love notes
 fix(vault): 🩹 close access when the session expires
-style(cloud): 🎀 draw envelopes for shared albums
-docs(readme): 💐 share our little world
+docs(readme): 💐 welcome loving hearts
 ```
 
-[Полный гайд по коммитам](docs/COMMIT_STYLE.md) · [Визуальный стиль](docs/BRAND.md) · [API](docs/API.md)
+## License
 
----
+LoveCloud’s original code is licensed under [Apache-2.0](LICENSE). Fonts, dependencies and container components retain their own licenses; see [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES), [the licensing audit](docs/LICENSING_AUDIT.md), and the exact-image SBOM / license bundle attached to each release. Apache-2.0 permits commercial use under its terms; no payment, contribution-back or PR requirement is added.
 
-<p align="center">
-  <strong>С любовью, команда neo_mei ♡</strong><br>
-  <sub>Чтобы у каждого «мы» был свой маленький дом.</sub>
-</p>
+<p align="center"><strong>With love, the neo_mei team ♡</strong><br><sub>So every “us” has a little home.</sub></p>
