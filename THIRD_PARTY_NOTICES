@@ -66,6 +66,11 @@ app screenshots. Their provenance and exclusion are recorded in the audit.
 Release artifacts
 -----------------
 The exact-image SBOMs and collected licenses/source bundle accompany releases.
+For v0.1.0, full native/distribution source, recipes and notices are provided at:
+https://github.com/m0rp3x/LoveCloud/releases/download/v0.1.0/lovecloud-v0.1.0-third-party-licenses.tar.gz
+This includes immutable SkiaSharp/Skia build source and zlib/mozzconf source for
+historical MPL-1.1 tri-licensed components named in the upstream native notices.
+See licenses/MPL-1.1.txt; no LoveCloud modifications to those components are made.
 Run scripts/release/collect-licenses.py against the final API/frontend digests
 to reproduce the license inventory. An inventory is evidence of the shipped
 files, not a substitute for the individual licenses and notices themselves.

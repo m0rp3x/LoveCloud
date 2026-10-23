@@ -18,7 +18,14 @@ exact corresponding source and build/relinking material for its statically
 linked native dependencies; linking only to a license table is insufficient.
 See [the audit](../docs/LICENSING_AUDIT.md).
 
-For **SkiaSharp**, the collector retains `LICENSE.txt` and
+Corresponding sources, recipes and notices for this version are supplied as
+[`lovecloud-v0.1.0-third-party-licenses.tar.gz`](https://github.com/m0rp3x/LoveCloud/releases/download/v0.1.0/lovecloud-v0.1.0-third-party-licenses.tar.gz).
+
+For **SkiaSharp**, native notices preserve historical MPL-1.1/GPL/LGPL
+tri-license declarations for GIF/mozzconf components. The bundle includes
+immutable SkiaSharp build recipes, the exact Skia source submodule and matching
+zlib source identified by DEPS, alongside MPL-1.1 text and source checksums.
+These upstream components are unmodified by LoveCloud. The collector retains `LICENSE.txt` and
 `THIRD-PARTY-NOTICES.txt` from the exact NuGet packages declared by the shipped
 API. NuGet package version and SHA-256 are recorded. The .NET runtime's MIT and
 third-party notices are included here and in its upstream image.

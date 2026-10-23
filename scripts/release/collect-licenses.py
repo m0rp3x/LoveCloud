@@ -104,7 +104,7 @@ def scan_image(role, image, out):
                 leaf = parts[-1]
                 app_manifest = leaf == 'package.json' and 'node_modules' in parts
                 deps = name.startswith('app/') and name.endswith('.deps.json')
-                os_meta = name in ['lib/apk/db/installed','var/lib/dpkg/status','etc/os-release','etc/alpine-release']
+                os_meta = name in ['lib/apk/db/installed','var/lib/dpkg/status','etc/os-release','etc/alpine-release'] or name.startswith('etc/apt/sources.list')
                 notice = LICENSE_NAME.match(leaf) or '/licenses/' in name or '/legal/' in name
                 if not any([app_manifest, deps, os_meta, notice]): continue
                 target = image_out / 'files' / name
@@ -219,7 +219,46 @@ def collect_nuget(report, out):
                             if error.code != 404: raise
             if not any('license' in file.lower() or 'copying' in file.lower() for file in notices):
                 raise RuntimeError('Missing actual NuGet license text: '+entry)
-            (package_out/'source.json').write_text(json.dumps({'package':name,'version':version,'url':url,'sha256':digest(archive),'upstreamNoticeURLs':source_urls,'notices':notices},indent=2)+'\n',encoding='utf-8')
+            (package_out/'source.json').write_text(json.dumps({'package':name,'version':version,'url':url,'sha256':digest(archive),'repository':dict(repository.attrib) if repository is not None else {},'upstreamNoticeURLs':source_urls,'notices':notices},indent=2)+'\n',encoding='utf-8')
+
+
+def collect_native_sources(report, out):
+    # Skia's aggregate preserves historical MPL tri-licensed GIF/mozzconf
+    # notices as well as permissive components. Supply immutable native source
+    # and build recipes, rather than assuming its managed MIT wrapper is enough.
+    package = next((entry for entry in report['nuget'] if entry.startswith('SkiaSharp.NativeAssets.Linux.NoDependencies/')),None)
+    if package is None: raise RuntimeError('Expected SkiaSharp native package not found in API deps.json')
+    name,version=package.rsplit('/',1)
+    metadata=json.loads((out/'nuget'/safe_name(name+'-'+version)/'source.json').read_text(encoding='utf-8'))
+    commit=metadata['repository'].get('commit','')
+    if not re.fullmatch(r'[0-9a-f]{40}',commit): raise RuntimeError('SkiaSharp NuGet source commit missing')
+    target=out/'native-sources/skia'
+    target.mkdir(parents=True)
+    module_url=f'https://api.github.com/repos/mono/SkiaSharp/contents/externals/skia?ref={commit}'
+    fetch(module_url,target/'skia-submodule.json')
+    module=json.loads((target/'skia-submodule.json').read_text(encoding='utf-8'))
+    skia_commit=module.get('sha','')
+    if module.get('submodule_git_url')!='https://github.com/mono/skia.git' or not re.fullmatch(r'[0-9a-f]{40}',skia_commit):
+        raise RuntimeError('Unexpected Skia source submodule; review provenance before publishing')
+    deps_url=f'https://raw.githubusercontent.com/mono/skia/{skia_commit}/DEPS'
+    fetch(deps_url,target/'DEPS')
+    deps=(target/'DEPS').read_text(encoding='utf-8')
+    match=re.search(r'"third_party/externals/zlib"\s*:\s*"(https://chromium.googlesource.com/[^"@]+)@([0-9a-f]{40})"',deps)
+    if not match: raise RuntimeError('Cannot identify exact Skia zlib/mozzconf source')
+    sources=[(f'https://codeload.github.com/mono/SkiaSharp/tar.gz/{commit}','skiasharp-build-source.tar.gz'),
+             (f'https://codeload.github.com/mono/skia/tar.gz/{skia_commit}','skia-source.tar.gz'),
+             (match[1]+'/+archive/'+match[2]+'.tar.gz','zlib-source.tar.gz')]
+    inventory=[]
+    for url,name in sources:
+        fetch(url,target/name)
+        # Check it is an actual archive, not an HTML error with status 200.
+        with tarfile.open(target/name,'r:gz') as archive:
+            if archive.next() is None: raise RuntimeError('Empty native source archive')
+        inventory.append({'url':url,'file':name,'sha256':digest(target/name)})
+    result={'status':'PASS','nugetPackage':package,'skiasharpCommit':commit,'skiaCommit':skia_commit,'sources':inventory,
+            'scope':'Unmodified native source and build recipes, including zlib/mozzconf MPL tri-license source; full upstream notices retained.'}
+    (target/'source-provenance.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    return result
 
 
 ALPINE_FETCH = r'''set -eu
@@ -230,13 +269,16 @@ while IFS='|' read -r origin version commit; do
   found=0
   for repo in main community testing; do
     recipe="https://gitlab.alpinelinux.org/alpine/aports/-/archive/$commit/aports-$commit.tar.gz?path=$repo/$origin"
-    if curl --fail --location --retry 3 "$recipe" -o /tmp/aports.tar.gz 2>/dev/null; then
+    if curl --fail --location --connect-timeout 20 --max-time 180 --retry 3 --retry-delay 3 "$recipe" -o /tmp/aports.tar.gz 2>/dev/null; then
+      # Fixed private staging path inside this disposable helper only. Keep
+      # output sources/recipes, but do not accumulate full aports checkouts.
+      rm -rf /tmp/lc-source
       mkdir -p "/output/recipes/$origin" /tmp/lc-source
       tar -xzf /tmp/aports.tar.gz -C /tmp/lc-source
       build=$(find /tmp/lc-source -path "*/$repo/$origin/APKBUILD" -print -quit)
       if [ -n "$build" ]; then
         cp -a "$(dirname "$build")/." "/output/recipes/$origin/"
-        (cd "/output/recipes/$origin" && SRCDEST=/output/distfiles abuild -F fetch)
+        (cd "/output/recipes/$origin" && SRCDEST=/output/distfiles abuild -F fetch && SRCDEST=/output/distfiles abuild -F verify)
         printf '%s\n' "$recipe" > "/output/recipes/$origin/recipe-url.txt"
         found=1
         break
@@ -245,6 +287,8 @@ while IFS='|' read -r origin version commit; do
   done
   [ "$found" = 1 ] || { echo "Cannot acquire source recipe for $origin $version" >&2; exit 1; }
 done < /output/packages.txt
+rm -rf /tmp/lc-source
+rm -f /tmp/aports.tar.gz
 '''
 
 DEBIAN_FETCH = r'''set -eu
@@ -260,9 +304,13 @@ if [ -f /etc/apt/sources.list ]; then
   sed -n 's/^deb /deb-src /p' /etc/apt/sources.list > /etc/apt/sources.list.d/lovecloud-src.list
 fi
 apt-get update >/dev/null
+mkdir -p /output/repositories /output/source-metadata
+cp -a /etc/apt/sources.list.d /output/repositories/
+[ ! -f /etc/apt/sources.list ] || cp /etc/apt/sources.list /output/repositories/
 cd /output/sources
 while IFS='|' read -r package version; do
   [ -n "$package" ] || continue
+  apt-get source --print-uris "$package=$version" > "/output/source-metadata/$package-uris.txt"
   apt-get source --download-only "$package=$version"
 done < /output/packages.txt
 '''
@@ -318,7 +366,9 @@ def main():
     for role,image in images:
         inventory=scan_image(role,image,out)
         report['images'][role]={'image':image,'id':inventory['id'],'licenseFiles':len(inventory['licenseFiles']),'packages':len(inventory['packages'])}
-        if role=='api': collect_nuget(inventory,out)
+        if role=='api':
+            collect_nuget(inventory,out)
+            report['nativeSources']=collect_native_sources(inventory,out)
         report['sources'][role]=collect_os_sources(role,image,inventory,out,args.fetch_os_sources)
     scan_layers(args.frontend_image,out)
     report['frontendLayerAudit']='PASS'

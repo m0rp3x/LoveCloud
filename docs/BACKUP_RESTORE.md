@@ -4,7 +4,7 @@ A complete LoveCloud backup includes PostgreSQL, originals/avatars, DataProtecti
 
 ## Create an encrypted backup
 
-Run from the installation directory. The operational scripts use Python 3 and Docker; they use restic in a container rather than requiring a host restic installation.
+Run from the installation directory. The operational scripts use Docker and POSIX shell or PowerShell 7. They run restic in a container; host Python and host restic are not required.
 
 ```sh
 sh scripts/backup.sh --repository /safe/lovecloud-backups

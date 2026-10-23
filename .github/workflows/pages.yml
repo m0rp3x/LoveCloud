@@ -2,7 +2,7 @@ name: Interactive preview
 on:
   push:
     branches: [master]
-    paths: ['design/**', 'scripts/release/build-pages.py', 'tests/preview.mjs', 'tests/serve-preview.mjs', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES', '.github/workflows/pages.yml']
+    paths: ['design/**', 'scripts/release/build-pages.py', 'scripts/release/verify-pages.mjs', 'tests/preview.mjs', 'tests/serve-preview.mjs', 'VERSION', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES', '.github/workflows/pages.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -54,3 +54,27 @@ jobs:
       - name: Publish interactive preview
         id: deployment
         uses: actions/deploy-pages@v4
+  verify-published:
+    needs: deploy
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated browser verification tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/preview-tools" --no-save playwright@1.56.1
+          npx --prefix "$RUNNER_TEMP/preview-tools" playwright install --with-deps chromium
+      - name: Verify the actual published preview
+        env:
+          LOVECLOUD_PLAYWRIGHT_ROOT: ${{ runner.temp }}/preview-tools
+        run: |
+          node scripts/release/verify-pages.mjs https://m0rp3x.github.io/LoveCloud/ "$GITHUB_SHA"
+          node tests/preview.mjs --url https://m0rp3x.github.io/LoveCloud/ --report preview-live-verification.json
+          node scripts/release/verify-pages.mjs https://m0rp3x.github.io/LoveCloud/ "$GITHUB_SHA" preview-live-verification.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview-live-verification
+          path: preview-live-verification.json
+          if-no-files-found: error

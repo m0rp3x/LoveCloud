@@ -2,6 +2,7 @@
 """Allowlisted, offline GitHub Pages artifact. No credentials or app state."""
 import argparse
 import json
+import os
 import re
 import shutil
 from pathlib import Path
@@ -27,6 +28,7 @@ html = (out / 'index.html').read_text(encoding='utf-8').replace('../assets/', 'a
 for name in ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES']:
     shutil.copy2(root / name, out / name)
 (out / '.nojekyll').write_text('', encoding='utf-8')
+(out / 'preview-version.json').write_text(json.dumps({'version':(root/'VERSION').read_text(encoding='utf-8').strip(),'sourceSha':os.environ.get('GITHUB_SHA')})+'\n',encoding='utf-8')
 sources = '\n'.join(p.read_text(encoding='utf-8') for p in out.rglob('*') if p.suffix in ['.html', '.css', '.js'])
 for forbidden in ['images.unsplash.com', 'fonts.googleapis.com', 'localStorage', 'sessionStorage', 'fetch(', 'XMLHttpRequest', 'sendBeacon', 'WebSocket(']:
     if forbidden in sources:
