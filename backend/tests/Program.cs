@@ -20,4 +20,6 @@ Console.WriteLine("All core checks passed.");
 await AvatarChecks.RunAsync();
 var integrationConnectionFile = Environment.GetEnvironmentVariable("LOVECLOUD_CHECKS_CONNECTION_FILE");
 if (!string.IsNullOrEmpty(integrationConnectionFile)) await SetupRaceChecks.RunAsync(integrationConnectionFile);
+else if (Environment.GetEnvironmentVariable("LOVECLOUD_REQUIRE_SETUP_RACES") == "1") throw new InvalidOperationException("LOVECLOUD_CHECKS_CONNECTION_FILE is required; setup race checks were not run.");
+else Console.WriteLine("NOT RUN setup races: set LOVECLOUD_CHECKS_CONNECTION_FILE to a disposable PostgreSQL superuser connection file.");
 static void Check(bool ok, string name) { if (!ok) throw new Exception(name); Console.WriteLine("PASS " + name); }

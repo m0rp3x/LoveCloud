@@ -1,12 +1,13 @@
+import {artifact,secret,testBase} from './environment.mjs';
 // Full HTTP/SignalR acceptance against a dedicated, disposable Compose project.
 // Never point this script at an installation with personal data.
 import assert from 'node:assert/strict';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
-import {randomBytes,createHmac} from 'node:crypto';
+import {randomBytes,createHmac,createHash} from 'node:crypto';
+import {avatarPng} from './avatar-fixture.mjs';
 import {createRequire} from 'node:module';
 
-const base=process.env.LOVECLOUD_TEST_URL || 'http://localhost:3212';
-if (!/^http:\/\/(localhost|127\.0\.0\.1):3212$/.test(base)) throw new Error('Use the isolated test installation on port3212.');
+const base=testBase('http://localhost:3212');
 const require=createRequire(new URL('../frontend/package.json',import.meta.url));
 const results=[];
 const record=(name)=>{results.push({name,passed:true});console.log('PASS '+name);};
@@ -47,7 +48,7 @@ let connections=[];
 try {
   const anon=new Client(), admin=new Client(), a=new Client(), b=new Client();
   await anon.request('/api/v1/auth/me',{expected:401});record('anonymous access denied');
-  const bootstrap=(await readFile(new URL('../.secrets/bootstrap_password',import.meta.url),'utf8')).trim();
+  const bootstrap=(await readFile(secret('bootstrap_password'),'utf8')).trim();
   let adminMe=await admin.login('admin',bootstrap);assert.equal(adminMe.user.role,'admin');assert.equal(adminMe.user.mustChangePassword,true);
   await admin.request('/api/v1/admin/users',{expected:[401,403]});record('bootstrap requires password change');
   const adminPass=password();adminMe=await admin.changePassword('admin',bootstrap,adminPass);assert.equal(adminMe.user.mustChangePassword,false);
@@ -60,7 +61,7 @@ try {
   await a.login('test_anna',pa);const ma=await a.changePassword('test_anna',pa,pa2);
   await b.login('test_misha',pb);const mb=await b.changePassword('test_misha',pb,pb2);
   await mkdir(new URL('../.artifacts/',import.meta.url),{recursive:true});
-  await writeFile(new URL('../.artifacts/test-credentials.json',import.meta.url),JSON.stringify({admin:{username:'admin',password:adminPass},anna:{username:'test_anna',password:pa2},misha:{username:'test_misha',password:pb2}}),{mode:0o600});
+  await writeFile(artifact('test-credentials.json'),JSON.stringify({admin:{username:'admin',password:adminPass},anna:{username:'test_anna',password:pa2},misha:{username:'test_misha',password:pb2}}),{mode:0o600});
   assert.equal((await a.request('/api/v1/pair/members')).length,2);
   await admin.request('/api/v1/files',{expected:403});record('partner access and admin content isolation');
   const saved=a.csrf;a.csrf='invalid';await a.request('/api/v1/tasks',{method:'POST',body:{title:'blocked',priority:'normal',repeat:'none'},expected:403});a.csrf=saved;record('CSRF rejects invalid token');
@@ -89,6 +90,16 @@ try {
   await b.request(`/api/v1/posts/${post.id}/heart`,{method:'PUT'});
   await b.request(`/api/v1/posts/${post.id}/replies`,{method:'POST',body:{body:'Ответ второго партнёра',clientPostId:crypto.randomUUID()},expected:[200,201]});
   assert.equal((await a.request(`/api/v1/posts/${post.id}/replies`)).length,1);record('two authenticated partners: social feed, reply, heart and SignalR');
+  const avatarForm=new FormData();avatarForm.append('file',new Blob([avatarPng],{type:'image/png'}),'synthetic.png');
+  await a.request('/api/v1/profile/avatar',{method:'POST',body:avatarForm,expected:[200,201]});
+  const pairForm=new FormData();pairForm.append('file',new Blob([avatarPng],{type:'image/png'}),'couple.png');
+  await a.request('/api/v1/pair/avatar',{method:'POST',body:pairForm,expected:[200,201]});
+  const avatarMe=await a.request('/api/v1/auth/me');
+  const avatarResponse=await a.request(avatarMe.user.avatarUrl,{raw:true});
+  const avatarSha256=createHash('sha256').update(Buffer.from(await avatarResponse.arrayBuffer())).digest('hex');
+  const pairAvatarResponse=await a.request(avatarMe.pair.avatarUrl,{raw:true});
+  const pairAvatarSha256=createHash('sha256').update(Buffer.from(await pairAvatarResponse.arrayBuffer())).digest('hex');
+  record('normalized synthetic profile and couple avatars');
 
   const task=await a.request('/api/v1/tasks',{method:'POST',body:{title:'Общее дело',assigneeId:mb.user.id,dueDate:'2026-10-17',priority:'high',repeat:'weekly',status:'todo'},expected:[200,201]});
   await b.request(`/api/v1/tasks/${task.id}`,{method:'PATCH',body:{status:'done'}});
@@ -111,7 +122,7 @@ try {
   await a.request('/api/v1/vault/unlock',{method:'POST',body:{code:nextCode}});
   await a.request('/api/v1/vault/unlock',{method:'POST',body:{code:nextCode},expected:[400,401,409]});
   const privateFile=await upload(a,'Закрытый снимок.png',null,'vault');
-  await writeFile(new URL('../.artifacts/test-totp.json',import.meta.url),JSON.stringify({secret:enrollment.secret,lastUsedStep,privateFileId:privateFile.id}),{mode:0o600});
+  await writeFile(artifact('test-totp.json'),JSON.stringify({secret:enrollment.secret,lastUsedStep,privateFileId:privateFile.id}),{mode:0o600});
   await a.request(`/api/v1/files/${privateFile.id}/content`,{raw:true});
   await b.request(`/api/v1/files/${privateFile.id}/content`,{expected:[401,403,423]});
   assert(!(await b.request('/api/v1/files')).some(x=>x.id===privateFile.id));
@@ -119,7 +130,7 @@ try {
   await a.request(`/api/v1/files/${privateFile.id}/content`,{expected:[401,403,423]});record('real TOTP enrollment, replay rejection and server-side vault gate');
 
   await mkdir(new URL('../.artifacts/',import.meta.url),{recursive:true});
-  await writeFile(new URL('../.artifacts/integration-state.json',import.meta.url),JSON.stringify({fileId:file.id,taskId:task.id,postId:post.id,folderId:envelope.id}));
+  await writeFile(artifact('integration-state.json'),JSON.stringify({fileId:file.id,taskId:task.id,postId:post.id,folderId:envelope.id,fileSha256:createHash('sha256').update(png).digest('hex'),privateSha256:createHash('sha256').update(png).digest('hex'),avatarSha256,pairAvatarSha256}));
   record('all persisted records created through real PostgreSQL API');
 } catch(error){results.push({name:error.message,passed:false});console.error('FAIL '+error.message);process.exitCode=1;}
-finally {for(const c of connections)await c.stop().catch(()=>{});await mkdir(new URL('../.artifacts/',import.meta.url),{recursive:true});await writeFile(new URL('../.artifacts/integration-results.json',import.meta.url),JSON.stringify({base,at:new Date().toISOString(),results},null,2));}
+finally {for(const c of connections)await c.stop().catch(()=>{});await mkdir(new URL('../.artifacts/',import.meta.url),{recursive:true});await writeFile(artifact('integration-results.json'),JSON.stringify({base,at:new Date().toISOString(),results},null,2));}

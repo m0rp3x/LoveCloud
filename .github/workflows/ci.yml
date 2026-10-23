@@ -1,0 +1,78 @@
+name: LoveCloud checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      checks-postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd 'pg_isready -U postgres'
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.402'
+      - name: Frontend locked install, types and production build
+        run: |
+          npm ci --prefix frontend
+          npm run typecheck --prefix frontend
+          npm run build --prefix frontend
+      - name: Backend restore and Release build
+        run: |
+          dotnet restore backend/tests/LoveCloud.Checks.csproj
+          dotnet build backend/tests/LoveCloud.Checks.csproj --configuration Release --no-restore
+      - name: Core, native avatars and real setup races
+        env:
+          LOVECLOUD_CHECKS_CONNECTION_FILE: ${{ runner.temp }}/lovecloud-checks-connection
+          LOVECLOUD_REQUIRE_SETUP_RACES: '1'
+        run: |
+          umask 077
+          printf '%s' 'Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Password=disposable-ci-only' > "$LOVECLOUD_CHECKS_CONNECTION_FILE"
+          dotnet run --configuration Release --no-build --project backend/tests/LoveCloud.Checks.csproj
+      - name: Shell installer fixtures
+        run: sh tests/installers.sh
+      - name: PowerShell installer fixtures
+        shell: pwsh
+        run: ./tests/installers.ps1
+      - name: JavaScript syntax and operational shell syntax
+        run: |
+          for file in tests/*.mjs scripts/release/*.mjs; do node --check "$file"; done
+          for file in scripts/*.sh scripts/release/*.sh; do sh -n "$file"; done
+      - name: Candidate delivery gate is separate
+        run: |
+          printf '%s\n' 'Source checks do not certify a release. Release workflow must run verify-candidate.sh on exact archive and pinned images, including baseline backup/restore/upgrade.'
+
+  windows-installer-fixtures:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: PowerShell real Windows filesystem and configuration fixtures
+        shell: pwsh
+        run: ./tests/installers.ps1

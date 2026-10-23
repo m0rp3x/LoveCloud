@@ -1,8 +1,9 @@
+import {artifact,secret,testBase} from './environment.mjs';
 import assert from 'node:assert/strict';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {randomBytes} from 'node:crypto';
 import {avatarPng as png} from './avatar-fixture.mjs';
-const base='http://localhost:3213';
+const base=testBase('http://localhost:3213');
 const results=[];
 const pass=name=>{results.push({name,passed:true});console.log('PASS '+name);};
 const password=()=>randomBytes(24).toString('base64url')+'aA1!';
@@ -23,7 +24,7 @@ class Client{
 }
 try{
  const owner=new Client(),other=new Client(),anon=new Client();
- const token=(await readFile(new URL('../.secrets/setup_token',import.meta.url),'utf8')).trim();assert.match(token,/^[a-f0-9]{64}$/i);
+ const token=(await readFile(secret('setup_token'),'utf8')).trim();assert.match(token,/^[a-f0-9]{64}$/i);
  const status=await anon.call('/setup/status');assert.equal(status.required,true);pass('fresh installation requires setup');
  await anon.call('/setup/exchange',{method:'POST',body:{token},headers:{Origin:'https://invalid.example'},status:403});
  await anon.call('/setup/exchange',{method:'POST',body:{token:'0'.repeat(64)},status:[400,401,403]});pass('setup Origin and invalid-token rejection');
@@ -40,7 +41,7 @@ try{
  const secondAvatar=await owner.upload('/setup/avatar',png);
  await anon.call(pairAvatar.url.replace('/api/v1',''),{status:[401,403,404]});
  const preview=await owner.call(pairAvatar.url.replace('/api/v1',''),{raw:true});const avatarBytes=Buffer.from(await preview.arrayBuffer());assert(avatarBytes.length>8);assert.deepEqual(avatarBytes.subarray(0,8),png.subarray(0,8));assert(preview.headers.get('content-type').startsWith('image/png'));pass('real normalized avatars, ownership, replacement and private previews');
- const bootstrapPassword=(await readFile(new URL('../.secrets/bootstrap_password',import.meta.url),'utf8')).trim();
+ const bootstrapPassword=(await readFile(secret('bootstrap_password'),'utf8')).trim();
  const mixed=new Client();await mixed.login('admin',bootstrapPassword);for(const[k,v]of owner.cookies)mixed.cookies.set(k,v);
  await mixed.call(pairAvatar.url.replace('/api/v1',''),{raw:true});pass('setup avatar preview works with an old must-change admin cookie');
  await owner.call('/setup/avatar/'+secondAvatar.id,{method:'DELETE',status:204});
@@ -65,7 +66,7 @@ try{
  await owner.upload('/pair/avatar',png);assert((await owner.call('/auth/me')).pair.avatarUrl);pass('real profile and pair avatar updates');
  const ownMe=await owner.call('/auth/me');
  const post=await owner.call('/posts',{method:'POST',body:{kind:'message',body:'Our first note',clientPostId:crypto.randomUUID()}});assert.equal(post.authorAvatarUrl,ownMe.user.avatarUrl);pass('author avatar is used by real social publications');
- await mkdir(new URL('../.artifacts/',import.meta.url),{recursive:true});await writeFile(new URL('../.artifacts/onboarding-credentials.json',import.meta.url),JSON.stringify({username:'setup_owner',password:firstPass}),{mode:0o600});
- await writeFile(new URL('../.artifacts/onboarding-rotation-token',import.meta.url),randomBytes(32).toString('hex'),{mode:0o600});
+ await mkdir(new URL('../.artifacts/',import.meta.url),{recursive:true});await writeFile(artifact('onboarding-credentials.json'),JSON.stringify({username:'setup_owner',password:firstPass}),{mode:0o600});
+ await writeFile(artifact('onboarding-rotation-token'),randomBytes(32).toString('hex'),{mode:0o600});
 }catch(e){results.push({name:e.message,passed:false});console.error('FAIL '+e.message);process.exitCode=1;}
-finally{await mkdir(new URL('../.artifacts/',import.meta.url),{recursive:true});await writeFile(new URL('../.artifacts/onboarding-results.json',import.meta.url),JSON.stringify({at:new Date().toISOString(),results},null,2));}
+finally{await mkdir(new URL('../.artifacts/',import.meta.url),{recursive:true});await writeFile(artifact('onboarding-results.json'),JSON.stringify({at:new Date().toISOString(),results},null,2));}
