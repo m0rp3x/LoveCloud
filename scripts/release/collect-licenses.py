@@ -395,6 +395,13 @@ while IFS='|' read -r package version; do
     snapshot_apt source --only-source --download-only "$package=$version"
   fi
 done < /output/packages.txt
+# APT's root-only lock/partial workspace is not licensing evidence. These exact
+# paths belong only to this disposable helper's private snapshot lists; retain
+# every signed index, source file and repository configuration beside them.
+if [ "$snapshot_ready" = true ]; then
+  rm -f -- /output/source-metadata/ubuntu-snapshot/lists/lock
+  rm -rf -- /output/source-metadata/ubuntu-snapshot/lists/partial
+fi
 printf 'sources-verified\n' > /output/source-fetch-complete.txt
 '''
 
