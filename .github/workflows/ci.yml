@@ -65,8 +65,11 @@ jobs:
         run: ./tests/operations-dispatch.ps1
       - name: License collector regressions (offline mocked executor)
         run: |
-          python3 tests/test_license_collector.py
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
           node tests/npm-license-graph.mjs
+      - name: Actual historical Ubuntu source probe (isolated public runtime base)
+        timeout-minutes: 20
+        run: python3 tests/os-source-probe.py --report "${{ runner.temp }}/os-source-probe.json"
       - name: JavaScript syntax and operational shell syntax
         run: |
           for file in tests/*.mjs scripts/release/*.mjs; do node --check "$file"; done

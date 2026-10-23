@@ -4,6 +4,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,readdirSync}
 import {resolve,join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 const collector=resolve(process.env.LOVECLOUD_NPM_COLLECTOR_PATH||fileURLToPath(new URL('../scripts/release/collect-npm-licenses.mjs',import.meta.url)));
 const root=mkdtempSync(join(tmpdir(),'lovecloud-client-notices-')),source=join(root,'build/node_modules'),runtime=join(root,'runtime/node_modules');
@@ -16,6 +17,11 @@ writeFileSync(join(nested,'native.so'),'not a binary: fixture payload');writeFil
 function execute(output,roots){return spawnSync(process.execPath,[collector,'--root',runtime,'--source',source,'--output',output,'--client-roots',roots],{encoding:'utf8'});}
 const output=join(root,'notices'),success=execute(output,'client-root');assert.equal(success.status,0,success.stderr);
 const inventory=JSON.parse(readFileSync(join(output,'runtime-notice-inventory.json'),'utf8'));
+function allFiles(directory){return readdirSync(directory,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?allFiles(join(directory,entry.name)):[join(directory,entry.name)]);}
+assert(allFiles(output).every(file=>!file.endsWith('package.json')),'Notice manifest aliases must not look like installed runtime packages.');
+const alias=inventory.files.find(file=>file.sourcePath==='client-root/node_modules/transitive/package.json');
+assert(alias&&alias.path.endsWith('package-info.json'),'Notice alias preserves original manifest source path.');
+assert.equal(alias.sha256,createHash('sha256').update(readFileSync(join(nested,'package.json'))).digest('hex'),'Notice alias retains original manifest checksum.');
 assert.deepEqual(inventory.clientNoticeGraph.packages.map(p=>[p.name,p.version]),[['client-root','1.0.0'],['transitive','2.0.0']]);
 assert(existsSync(join(output,'client-root/node_modules/transitive/LICENSE.txt')),'Nested exact-version notice preserved');
 assert(!existsSync(join(output,'transitive')),'Unselected hoisted version omitted');assert(!existsSync(join(output,'build-only')),'Development-only dependency omitted');assert(!existsSync(join(output,'unused-source-package')),'Unrelated build-source packages omitted');

@@ -1,0 +1,61 @@
+"""Offline evidence validation; actual acquisition is a separate Docker probe."""
+import hashlib
+import importlib.util
+from pathlib import Path
+import tempfile
+import unittest
+
+spec=importlib.util.spec_from_file_location('os_source_probe',Path(__file__).with_name('os-source-probe.py'))
+probe=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(probe)
+
+
+class SourceEvidenceChecks(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory(prefix='lovecloud-source-evidence-')
+        self.addCleanup(self.temp.cleanup)
+        self.root=Path(self.temp.name)
+        for directory in ['sources','repositories','source-metadata']:(self.root/directory).mkdir()
+        (self.root/'source-fetch-complete.txt').write_text('sources-verified\n')
+        self.orig=self.root/'sources/systemd_255.4.orig.tar.gz'
+        self.patches=self.root/'sources/systemd_255.4-1ubuntu8.17.debian.tar.xz'
+        self.orig.write_bytes(b'synthetic-original')
+        self.patches.write_bytes(b'synthetic-distribution-patches')
+        hashes=''.join(' '+hashlib.sha256(file.read_bytes()).hexdigest()+' '+str(file.stat().st_size)+' '+file.name+'\n' for file in [self.orig,self.patches])
+        self.descriptor=self.root/'sources/systemd_255.4-1ubuntu8.17.dsc'
+        self.descriptor.write_text('Format: 3.0 (quilt)\nSource: systemd\nVersion: '+probe.VERSION+'\nChecksums-Sha256:\n'+hashes)
+        (self.root/'source-metadata/systemd-uris.txt').write_text(probe.SNAPSHOT+'pool/main/s/systemd/systemd_255.4-1ubuntu8.17.dsc\n')
+        (self.root/'repositories/snapshot.sources').write_text('Types: deb-src\nURIs: '+probe.SNAPSHOT+'\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n')
+
+    def test_exact_version_complete_checksummed_sources_pass(self):
+        self.assertEqual(len(probe.verify_payload(self.root)),3)
+
+    def test_latest_substitution_is_rejected(self):
+        self.descriptor.write_text(self.descriptor.read_text().replace(probe.VERSION,'999.0-latest'))
+        with self.assertRaisesRegex(AssertionError,'Never substitute the latest'):
+            probe.verify_payload(self.root)
+
+    def test_corrupt_or_missing_corresponding_source_is_rejected(self):
+        self.orig.write_bytes(b'tampered')
+        with self.assertRaisesRegex(AssertionError,'Missing complete|checksum mismatch'):
+            probe.verify_payload(self.root)
+
+    def test_snapshot_mention_only_in_script_is_not_provenance(self):
+        for directory in ['repositories','source-metadata']:
+            for file in (self.root/directory).iterdir():file.write_text('not a historical source reference\n')
+        (self.root/'acquire-sources.sh').write_text(probe.SNAPSHOT)
+        with self.assertRaisesRegex(AssertionError,'Actual historical snapshot URI provenance'):
+            probe.verify_payload(self.root)
+
+    def test_repository_without_retained_authentication_configuration_fails(self):
+        (self.root/'repositories/snapshot.sources').write_text('URIs: '+probe.SNAPSHOT+'\n')
+        with self.assertRaisesRegex(AssertionError,'authenticated Ubuntu repository'):
+            probe.verify_payload(self.root)
+
+    def test_missing_completion_cannot_pass(self):
+        (self.root/'source-fetch-complete.txt').write_text('started\n')
+        with self.assertRaisesRegex(AssertionError,'completion marker'):
+            probe.verify_payload(self.root)
+
+
+if __name__=='__main__':unittest.main(verbosity=2)
