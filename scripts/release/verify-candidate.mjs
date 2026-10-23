@@ -31,7 +31,7 @@ try{
   });
   const project=projectName('setup');projects.push(candidate);
   const hostPath=join(stage,'docker-only-host');mkdirSync(hostPath);
-  for(const tool of ['sh','docker','openssl','dirname','sed','tail','tr','grep','printenv','mktemp','mv','mkdir','chmod','find','cat','sleep']){
+  for(const tool of ['sh','docker','openssl','dirname','sed','tail','head','awk','tr','grep','printenv','mktemp','mv','mkdir','chmod','find','cat','sleep']){
     const path=run('sh',['-c','command -v "$1"','sh',tool],{capture:true});assert(path.startsWith('/'),`External tool path ${tool}`);symlinkSync(path,join(hostPath,tool));
   }
   run('sh',['-c','! command -v node && ! command -v dotnet && ! command -v git'],{env:{PATH:hostPath}});
