@@ -37,8 +37,27 @@ try {
         $expected=[IO.Path]::GetFullPath($repository,$install)
         if(-not (Test-Path -LiteralPath $expected -PathType Container)){throw 'Backup changed the chosen absolute/relative repository path.'}
     }
+    # Evaluate the production serialization statement itself and read its actual
+    # persisted dotenv output. A comma/concatenation precedence regression can
+    # otherwise be hidden by the initial restore process environment.
+    $settingsStatement=@($ast.FindAll({param($node) $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and $node.Extent.Text.StartsWith('$lines+=')},$true))
+    if($settingsStatement.Count -ne 1){throw 'Expected one restore settings serialization statement.'}
+    foreach($case in @(@{Separator=':';Origin='http://localhost:33216';Secure='false'},@{Separator=';';Origin='https://lovecloud.example';Secure='true'})){
+        $files=@('compose.backup.1.yaml','compose.backup.2.yaml');$separator=$case.Separator
+        $ProjectName='lc000-synthetic-restore';$Origin=$case.Origin;$originUri=[Uri]$Origin;$Port=33216;$lines=@('CUSTOM_SETTING=keep')
+        . ([scriptblock]::Create($settingsStatement[0].Extent.Text))
+        $settingsFile=Join-Path $probe 'restore-settings.env'
+        [IO.File]::WriteAllLines($settingsFile,$lines,[Text.UTF8Encoding]::new($false))
+        $settings=@{}
+        foreach($entry in [IO.File]::ReadAllLines($settingsFile)){
+            if($entry -notmatch '^([^=]+)=(.*)$'){throw 'Restore wrote a dangling dotenv value instead of a key=value record.'}
+            $settings[$Matches[1]]=$Matches[2]
+        }
+        if($settings.COMPOSE_FILE -ne ((@($files)+@('compose.restore.yaml')) -join $separator) -or $settings.SECURE_COOKIES -ne $case.Secure -or $settings.CUSTOM_SETTING -ne 'keep'){throw 'Restore did not persist reusable Compose files, cookies and custom settings.'}
+    }
     Write-Host 'PASS PowerShell operational wrappers dispatch to a native command without recursive command shadowing (Docker shim; no daemon contacted).'
     Write-Host 'PASS real backup preflight preserves absolute repositories and anchors relative repositories to its installation (synthetic filesystem; no daemon contacted).'
+    Write-Host 'PASS restore dotenv serialization retains whole Compose file lists, HTTP/HTTPS cookie settings and custom values across host separators (production statement; no daemon contacted).'
 } finally {
     $env:PATH=$previousPath
     $env:LOVECLOUD_DISPATCH_MODE=$previousMode
