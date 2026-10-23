@@ -77,9 +77,28 @@ try{
   });
   await check('PowerShell encrypted backup and restore',async()=>{
     const repo=join(stage,'encrypted-backup-ps'),destination=join(stage,'restored-ps');projects.push(destination);
-    run('pwsh',['-NoProfile','-File','scripts/backup.ps1','-Repository',repo],{cwd:original});
-    run('pwsh',['-NoProfile','-File',join(original,'scripts/restore.ps1'),'-Repository',repo,'-PasswordFile',join(original,'.secrets/backup_password'),'-Target',destination,'-ProjectName',projectName('psrestore'),'-Origin','http://localhost:33216','-Port','33216']);
-    syntheticState(original,destination);await ready('http://localhost:33216');test(destination,'http://localhost:33216','persistence');return 'Actual PowerShell7 Linux Docker encrypted backup + fresh restore; TOTP and exact original checksums verified.';
+    const restoredProject=projectName('psrestore'),restoredOrigin='http://localhost:33216';
+    // The shell gate above restores the original baseline. PowerShell parity
+    // restores the fully seeded final candidate, so all recreated services use
+    // final release digests without editing its saved settings or injecting env.
+    run('pwsh',['-NoProfile','-File','scripts/backup.ps1','-Repository',repo],{cwd:candidateHttpRoot});
+    run('pwsh',['-NoProfile','-File',join(candidateHttpRoot,'scripts/restore.ps1'),'-Repository',repo,'-PasswordFile',join(candidateHttpRoot,'.secrets/backup_password'),'-Target',destination,'-ProjectName',restoredProject,'-Origin',restoredOrigin,'-Port','33216']);
+    syntheticState(candidateHttpRoot,destination);await ready(restoredOrigin);test(destination,restoredOrigin,'persistence');
+    const settingsPath=join(destination,'.env'),savedSettings=readFileSync(settingsPath,'utf8');
+    const savedFileList=savedSettings.match(/^COMPOSE_FILE=(.+)$/m)?.[1].trim().replace(/^['"]|['"]$/g,'').split(':');
+    assert.deepEqual(savedFileList,['compose.backup.1.yaml','compose.backup.2.yaml','compose.restore.yaml'],'Persist every restored Compose override in its original order.');
+    const restoredConfig=checkLocked(destination,expected);
+    assert.equal(restoredConfig.name,restoredProject,'Persist the new isolated project name.');
+    assert.equal(restoredConfig.services.api.environment.App__Origin,restoredOrigin,'Read restored origin from saved settings.');
+    assert.equal(String(restoredConfig.services.api.environment.App__SecureCookies),'false','Read HTTP cookie policy from saved settings.');
+    assert.equal(restoredConfig.networks.private.name,restoredProject+'_restore_private');
+    assert(Object.values(restoredConfig.volumes).every(volume=>volume.name.startsWith(restoredProject+'_restore_')),'Keep all restored volumes isolated.');
+    const restoredSecrets=secretHashes(destination);assert.deepEqual(restoredSecrets,secretHashes(candidateHttpRoot));
+    compose(destination,['up','-d','--no-build','--force-recreate']);await ready(restoredOrigin);
+    assert.deepEqual(checkLocked(destination,expected),restoredConfig,'Recreate all final services using the same persisted configuration.');
+    assert.equal(readFileSync(settingsPath,'utf8'),savedSettings);assert.deepEqual(secretHashes(destination),restoredSecrets);
+    test(destination,restoredOrigin,'persistence');
+    return 'Actual PowerShell7 Linux Docker encrypted candidate backup/restore; saved project, ordered Compose overrides, origin/cookies, volumes/network and exact release digests verified without environment overrides; all services recreated, then original/avatar/vault hashes and decryptable TOTP verified again.';
   });
   await check('update same project and custom volumes',async()=>{
     const hashes=secretHashes(original);copyFileSync(lock,join(original,'compose.images.yaml'));
