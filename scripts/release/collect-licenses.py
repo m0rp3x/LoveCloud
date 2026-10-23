@@ -319,11 +319,11 @@ acquire_recipe_directory() {
   repo=$1
   # Extract only this package's immutable recipe and local patches/data, even
   # when the official GitHub mirror returns a complete aports repository.
-  awk -v wanted="/$repo/$origin/" 'index($0,wanted) { print }' /tmp/lc-aports-files.txt > /tmp/lc-recipe-files.txt
-  [ -s /tmp/lc-recipe-files.txt ] || return 1
+  recipe_tree=$(awk -v wanted="/$repo/$origin/" 'index($0,wanted) { print substr($0,1,index($0,wanted)+length(wanted)-1); exit }' /tmp/lc-aports-files.txt)
+  [ -n "$recipe_tree" ] || return 1
   rm -rf /tmp/lc-source
   mkdir -p "/output/recipes/$origin" /tmp/lc-source
-  tar -xzf /tmp/aports.tar.gz -C /tmp/lc-source -T /tmp/lc-recipe-files.txt || exit 1
+  tar -xzf /tmp/aports.tar.gz -C /tmp/lc-source "$recipe_tree" || exit 1
   build=$(find /tmp/lc-source -path "*/$repo/$origin/APKBUILD" -print -quit)
   [ -n "$build" ] || return 1
   cp -a "$(dirname "$build")/." "/output/recipes/$origin/" || exit 1
@@ -362,7 +362,7 @@ while IFS='|' read -r origin version commit; do
   [ "$found" = 1 ] || { echo "Cannot acquire source recipe for $origin $version" >&2; exit 1; }
 done < /output/packages.txt
 rm -rf /tmp/lc-source
-rm -f /tmp/aports.tar.gz /tmp/lc-aports-files.txt /tmp/lc-recipe-files.txt
+rm -f /tmp/aports.tar.gz /tmp/lc-aports-files.txt
 printf 'sources-verified\n' > /output/source-fetch-complete.txt
 '''
 
