@@ -61,6 +61,7 @@ try {
     [IO.File]::WriteAllText("$stagePath/install/backup-compose-files.txt",($composeFiles -join ':'),[Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText("$stagePath/install/backup-project.txt",$actualProject,[Text.UTF8Encoding]::new($false))
     Compose @('config','--format','json') | Set-Content "$stagePath/install/backup-effective-compose.json"
+    Compose @('config','--services') | Set-Content "$stagePath/install/backup-services.txt"
     Docker @('inspect','--format','{{json .Mounts}}',$api) | Set-Content "$stagePath/install/backup-api-mounts.json"
     Docker @('inspect','--format','{{json .Mounts}}',$db) | Set-Content "$stagePath/install/backup-db-mounts.json"
     Compose @('stop','api') | Out-Null;$stopped=$true

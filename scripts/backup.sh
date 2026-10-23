@@ -67,6 +67,7 @@ IFS=$old_ifs
 printf '%s\n' "$compose_files" > "$stage/install/backup-compose-files.txt"
 printf '%s\n' "$actual_project" > "$stage/install/backup-project.txt"
 compose config --format json > "$stage/install/backup-effective-compose.json"
+compose config --services > "$stage/install/backup-services.txt"
 docker inspect --format '{{json .Mounts}}' "$api" > "$stage/install/backup-api-mounts.json"
 docker inspect --format '{{json .Mounts}}' "$db" > "$stage/install/backup-db-mounts.json"
 compose stop api >/dev/null; stopped=true

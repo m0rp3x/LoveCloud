@@ -13,33 +13,40 @@ export function run(command,args=[],{cwd=sourceRoot,env={},capture=false,allowFa
 }
 export function scratch(){mkdirSync(join(sourceRoot,'.artifacts'),{recursive:true});return mkdtempSync(join(sourceRoot,'.artifacts','lc000-verify-'));}
 export function projectName(kind){return `lc000-${kind}-${randomBytes(4).toString('hex')}`;}
-export function compose(root,args,options={}){return run('docker',['compose',...args],{cwd:root,...options});}
+export function compose(root,args,options={}){return run('docker',['compose',...args],{cwd:root,...options,env:{COMPOSE_PROJECT_NAME:undefined,COMPOSE_FILE:undefined,COMPOSE_PATH_SEPARATOR:undefined,APP_ORIGIN:undefined,SECURE_COOKIES:undefined,LOVE_CLOUD_PORT:undefined,LOVE_CLOUD_BIND:undefined,...options.env}});}
 export function jsonConfig(root){return JSON.parse(compose(root,['config','--format','json'],{capture:true}));}
 export async function ready(url){for(let n=0;n<120;n++){try{if((await fetch(url+'/health')).ok)return;}catch{}await new Promise(r=>setTimeout(r,1000));}throw new Error('Application readiness timeout.');}
-export function test(root,url,name){run(process.execPath,[join(sourceRoot,'tests',name+'.mjs')],{env:{LOVECLOUD_TEST_ROOT:root,LOVECLOUD_TEST_URL:url}});}
+export function test(root,url,name){run(process.execPath,[join(sourceRoot,'tests',name+'.mjs')],{env:{LOVECLOUD_TEST_ROOT:root,LOVECLOUD_TEST_URL:url,LOVECLOUD_TEST_ISOLATED:'1'}});}
+export function checkRuntimePermissions(root){
+  const api=compose(root,['ps','-q','api'],{capture:true});
+  const user=run('docker',['inspect','-f','{{.Config.User}}',api],{capture:true});
+  assert(user&&!['root','0','0:0'].includes(user),'API must run as non-root.');
+  run('docker',['exec',api,'sh','-c','test -r /run/secrets/database_connection && test -r /run/secrets/bootstrap_password && test -r /run/secrets/setup_token'],{capture:true});
+}
 export function copySourceInstall(target,images){
   mkdirSync(target,{recursive:true});
   for(const name of ['compose.yaml','compose.https.yaml','compose.tailnet.yaml','VERSION','.env.example'])if(existsSync(join(sourceRoot,name)))copyFileSync(join(sourceRoot,name),join(target,name));
   for(const name of ['ops','scripts'])cpSync(join(sourceRoot,name),join(target,name),{recursive:true});
   copyFileSync(images,join(target,'compose.images.yaml'));
 }
-export function install(root,{port,project,mode='sh',extraFiles=[]}){
+export function install(root,{port,project,mode='sh',extraFiles=[],start=true}){
   const url=`http://localhost:${port}`;
   const env={LOVE_CLOUD_PORT:String(port),LOVE_CLOUD_BIND:'127.0.0.1',APP_ORIGIN:url,SECURE_COOKIES:'false'};
   if(mode==='pwsh'){
     // -File cannot bind multiple string[] values; a tiny command script uses
     // proper PowerShell argument binding, never interpolation of a token.
     const invocation=join(root,'qa-install.ps1');
-    writeFileSync(invocation,"& $PSScriptRoot/scripts/init.ps1 -Start -QuietSecrets -ProjectName $env:QA_PROJECT -Origin $env:APP_ORIGIN -ComposeFile @('compose.yaml','compose.images.yaml'"+extraFiles.map(x=>",'"+x+"'").join('')+")\n");
+    writeFileSync(invocation,"& $PSScriptRoot/scripts/init.ps1 "+(start?'-Start ':'')+"-QuietSecrets -ProjectName $env:QA_PROJECT -Origin $env:APP_ORIGIN -ComposeFile @('compose.yaml','compose.images.yaml'"+extraFiles.map(x=>",'"+x+"'").join('')+")\n");
     run('pwsh',['-NoProfile','-File',invocation],{cwd:root,env:{...env,QA_PROJECT:project}});
-  }else run('sh',['scripts/init.sh','--start','--quiet-secrets','--project',project,'--origin',url,'--compose-file','compose.yaml','--compose-file','compose.images.yaml',...extraFiles.flatMap(x=>['--compose-file',x])],{cwd:root,env});
+  }else run('sh',['scripts/init.sh',...(start?['--start']:[]),'--quiet-secrets','--project',project,'--origin',url,'--compose-file','compose.yaml','--compose-file','compose.images.yaml',...extraFiles.flatMap(x=>['--compose-file',x])],{cwd:root,env});
   return url;
 }
-export function checkLocked(root,expected){
+export function checkLocked(root,expected,{baseline=false}={}){
   const config=jsonConfig(root);
   for(const service of Object.values(config.services))assert(!service.build,'Production config must not inherit build.');
   for(const name of ['api','frontend','db','gateway']){
-    assert.match(config.services[name].image,/@sha256:[a-f0-9]{64}$/,'Candidate images must be pinned by registry digest.');
+    const pattern=baseline&&['api','frontend'].includes(name)?/^sha256:[a-f0-9]{64}$/:/@sha256:[a-f0-9]{64}$/;
+    assert.match(config.services[name].image,pattern,'Candidates require registry digests; only explicit local baseline images may use content IDs.');
     if(expected)assert.equal(config.services[name].image,expected.services[name].image,`Same ${name} image across all operations`);
   }
   return config;

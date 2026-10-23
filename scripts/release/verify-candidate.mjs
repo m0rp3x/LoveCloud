@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {resolve,join,basename} from 'node:path';
 import {readFileSync,writeFileSync,mkdirSync,cpSync,copyFileSync,existsSync,readdirSync} from 'node:fs';
 import {randomBytes,createHash} from 'node:crypto';
-import {run,sourceRoot,scratch,projectName,compose,jsonConfig,install,checkLocked,ready,test,integration,onboarding,clean} from '../../tests/compose-harness.mjs';
+import {run,sourceRoot,scratch,projectName,compose,jsonConfig,install,checkLocked,checkRuntimePermissions,ready,test,integration,onboarding,clean} from '../../tests/compose-harness.mjs';
 
 const options={};for(let i=2;i<process.argv.length;i+=2){assert(process.argv[i].startsWith('--'));options[process.argv[i].slice(2)]=process.argv[i+1];}
 for(const key of ['archive','images','source-sha','report'])assert(options[key],`--${key} is required`);
@@ -23,13 +23,17 @@ let checksContainer;
 try{
   const archive=resolve(options.archive),lock=resolve(options.images),candidate=join(stage,'candidate');
   await check('install archive allowlist',()=>{extract(archive,candidate);assert.equal(readFileSync(join(candidate,'VERSION'),'utf8').trim(),'0.1.0');assert.equal(readFileSync(join(candidate,'compose.images.yaml'),'utf8'),readFileSync(lock,'utf8'));for(const file of ['LICENSE','THIRD_PARTY_NOTICES','scripts/init.sh','scripts/init.ps1'])assert(existsSync(join(candidate,file)),`Included ${file}`);return 'Opened actual release tar.gz; no app source, personal environment or secrets.';});
+  await check('ZIP contents match verified tar archive',()=>{
+    const zip=resolve(options.zip||archive.replace(/\.tar\.gz$/,'.zip'));assert(existsSync(zip),'Matching install.zip artifact required beside tar.gz or via --zip.');
+    run('python',['-c',"import sys,zipfile,tarfile,hashlib\nwith zipfile.ZipFile(sys.argv[1]) as z, tarfile.open(sys.argv[2]) as t:\n a={x.filename:hashlib.sha256(z.read(x)).hexdigest() for x in z.infolist() if not x.is_dir()}\n b={x.name:hashlib.sha256(t.extractfile(x).read()).hexdigest() for x in t.getmembers() if x.isfile()}\n assert a==b, 'ZIP/tar payload mismatch'",zip,archive]);return 'Opened ZIP with CRC/content reads; every file SHA256 matches tar.gz payload.';
+  });
   const project=projectName('setup');projects.push(candidate);
   const candidateUrl=install(candidate,{project,port:33213});await ready(candidateUrl);
   const expected=checkLocked(candidate);report.images={api:expected.services.api.image,frontend:expected.services.frontend.image};save();
-  await check('shell installation from archive',()=>{const hashes=secretHashes(candidate);install(candidate,{project,port:33213});assert.deepEqual(secretHashes(candidate),hashes);checkLocked(candidate,expected);return 'Fresh start and idempotent rerun, ready, same pinned images and secrets.';});
+  await check('shell installation from archive',()=>{const hashes=secretHashes(candidate);install(candidate,{project,port:33213});assert.deepEqual(secretHashes(candidate),hashes);checkLocked(candidate,expected);checkRuntimePermissions(candidate);return 'Fresh start and idempotent rerun, ready, same pinned images/secrets, actual non-root mounted secret readability.';});
   await check('initial setup, avatars, access and restart',async()=>{await onboarding(candidate,candidateUrl);checkLocked(candidate,expected);});
   await check('private images and removed optimizer',async()=>{const r=await fetch(candidateUrl+'/_next/image?url=%2Fapi%2Fv1%2Ffiles%2Fnone%2Fcontent&w=640&q=75');assert.equal(r.status,404);run('docker',['run','--rm','--entrypoint','node',expected.services.frontend.image,'-e',"const fs=require('fs');for(const p of ['/app/node_modules/sharp','/app/node_modules/@img'])if(fs.existsSync(p))throw Error('Unexpected sharp/libvips native runtime: '+p);"]);return 'Optimizer endpoint404; sharp/@img absent from actual frontend runtime; authenticated raw image coverage below.';});
-  await check('PowerShell installation from archive',async()=>{const ps=join(stage,'powershell');extract(archive,ps);projects.push(ps);const url=install(ps,{project:projectName('ps'),port:33215,mode:'pwsh'});await ready(url);const hashes=secretHashes(ps);install(ps,{project:jsonConfig(ps).name,port:33215,mode:'pwsh'});assert.deepEqual(secretHashes(ps),hashes);checkLocked(ps,expected);const api=compose(ps,['ps','-q','api'],{capture:true});assert.equal(run('docker',['exec',api,'sh','-c','test -r /run/secrets/database_connection && test -r /run/secrets/bootstrap_password && test -r /run/secrets/setup_token'],{capture:true}),'');return 'PowerShell7 Linux Docker startup/rerun and actual non-root mounted secret readability.';});
+  await check('PowerShell installation from archive',async()=>{const ps=join(stage,'powershell');extract(archive,ps);projects.push(ps);const url=install(ps,{project:projectName('ps'),port:33215,mode:'pwsh'});await ready(url);const hashes=secretHashes(ps);install(ps,{project:jsonConfig(ps).name,port:33215,mode:'pwsh'});assert.deepEqual(secretHashes(ps),hashes);checkLocked(ps,expected);checkRuntimePermissions(ps);return 'PowerShell7 Linux Docker startup/rerun and actual non-root mounted secret readability.';});
   await check('backend core, native avatars and setup races',()=>{
     checksContainer=projectName('checks');const password=randomBytes(24).toString('hex');const passwordPath=join(stage,'postgres-password');writeFileSync(passwordPath,password,{mode:0o600});
     run('docker',['run','-d','--name',checksContainer,'-p','127.0.0.1::5432','--mount',`type=bind,source=${passwordPath},target=/run/check-password,readonly`,'-e','POSTGRES_PASSWORD_FILE=/run/check-password',expected.services.db.image],{capture:true});
@@ -44,8 +48,10 @@ try{
   const original=join(stage,'original');extract(archive,original);copyFileSync(resolve(options['baseline-images']),join(original,'compose.images.yaml'));
   const originalProject=projectName('upgrade');projects.push(original);
   writeFileSync(join(original,'compose.qa-volumes.yaml'),`volumes:\n  files:\n    name: ${originalProject}_custom_originals\n  keys:\n    name: ${originalProject}_custom_keyring\n  pgdata:\n    name: ${originalProject}_custom_pg18\n`);
-  const originalUrl=install(original,{project:originalProject,port:33212,extraFiles:['compose.qa-volumes.yaml']});await ready(originalUrl);
-  const originalConfig=checkLocked(original),volumesBefore={...originalConfig.volumes};
+  const originalUrl=install(original,{project:originalProject,port:33212,extraFiles:['compose.qa-volumes.yaml'],start:false});
+  compose(original,['pull','db','gateway']);compose(original,['up','-d','--no-build','--pull','never']);await ready(originalUrl);
+  const originalConfig=checkLocked(original,undefined,{baseline:true}),volumesBefore={...originalConfig.volumes};
+  report.baselineImages={api:originalConfig.services.api.image,frontend:originalConfig.services.frontend.image};save();
   await check('baseline synthetic functional data',async()=>{await integration(original,originalUrl);return 'Baseline381a796 accounts, folders, byte ranges, profile/couple avatars, post, recurring task, wishes, SignalR and real TOTP/vault originals, with exact SHA256.';});
   const repository=join(stage,'encrypted-backup');
   await check('consistent encrypted backup',()=>{run('sh',['scripts/backup.sh','--repository',repository],{cwd:original});assert(existsSync(join(repository,'config')));return 'API stopped for pg_dump + actual original/key mounts; restic check; .env/Compose/secrets included; key stored separately.';});

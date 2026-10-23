@@ -17,14 +17,21 @@ $PasswordFile=[IO.Path]::GetFullPath((Resolve-Path -LiteralPath $PasswordFile).P
 $Target=[IO.Path]::GetFullPath($Target)
 New-Item -ItemType Directory -Force -Path $Target | Out-Null
 if(Get-ChildItem -LiteralPath $Target -Force | Select-Object -First 1){throw 'Restore target must be empty.'}
-$backupImage=$env:LOVECLOUD_BACKUP_IMAGE;if(-not $backupImage){$backupImage='restic/restic:0.18.0'}
+$backupImage=$env:LOVECLOUD_BACKUP_IMAGE
+foreach($settings in @((Join-Path $PSScriptRoot '../.env'),(Join-Path $PSScriptRoot '../release.env'))){
+    if(-not $backupImage -and (Test-Path -LiteralPath $settings)){
+        $match=Get-Content -LiteralPath $settings | Where-Object {$_ -match '^LOVECLOUD_BACKUP_IMAGE='} | Select-Object -Last 1
+        if($match){$backupImage=($match -split '=',2)[1].Trim('"',"'")}
+    }
+}
+if(-not $backupImage){$backupImage='restic/restic:0.18.0'}
 function Docker([string[]]$Arguments){
     $output=& docker @Arguments
     if($LASTEXITCODE -ne 0){throw ('Docker operation failed: '+$Arguments[0]+'. Inspect sanitized logs before reporting.')}
     return $output
 }
 if(Docker @('ps','-aq','--filter',"label=com.docker.compose.project=$ProjectName")){throw 'Restore project already has containers; choose a fresh name.'}
-foreach($name in @('pgdata','files','keys')){
+foreach($name in @('pgdata','files','keys','tls_data','tls_config','tailnet_state')){
     & docker volume inspect "${ProjectName}_restore_$name" *> $null
     if($LASTEXITCODE -eq 0){throw 'Restore volume already exists; choose a fresh project.'}
 }
@@ -33,24 +40,37 @@ New-Item -ItemType Directory -Path $stage | Out-Null
 if($IsWindows){$owner=[Security.Principal.WindowsIdentity]::GetCurrent().Name;& icacls $stage /inheritance:r /grant:r "${owner}:(OI)(CI)F" | Out-Null;if($LASTEXITCODE -ne 0){throw 'Cannot protect restore staging.'}}
 else{& chmod 700 $stage}
 Push-Location $Target
+$previousEnvironment=@{}
 try {
     Docker @('run','--rm','--mount',"type=bind,source=$Repository,target=/repository,readonly",'--mount',"type=bind,source=$PasswordFile,target=/password,readonly",'--mount',"type=bind,source=$stage,target=/restore",$backupImage,'--repo','/repository','--password-file','/password','restore',$Snapshot,'--target','/restore')
     if(-not (Test-Path -LiteralPath "$stage/source/database/database.dump")){throw 'Snapshot has no LoveCloud database.'}
+    $services=@(Get-Content -LiteralPath "$stage/source/install/backup-services.txt")
+    foreach($service in $services){if($service -notin @('db','api','frontend','gateway','caddy','tailscale','')){throw 'Snapshot includes an unsupported additional service; prepare a reviewed manual restore before starting containers.'}}
     Get-ChildItem -LiteralPath "$stage/source/install" -Force | Copy-Item -Destination $Target -Recurse -Force
     if(-not $IsWindows){& chmod 700 .secrets;& chmod 644 .secrets/database_password .secrets/database_connection .secrets/bootstrap_password .secrets/setup_token}
     $files=(Get-Content backup-compose-files.txt -Raw).Trim().Split(':')
     @"
 services:
   db:
-    volumes:
-      - restored_pgdata:/var/lib/postgresql
+    volumes: !override
+      - pgdata:/var/lib/postgresql
   api:
-    volumes:
-      - restored_files:/data/files
-      - restored_keys:/data/keys
+    volumes: !override
+      - files:/data/files
+      - keys:/data/keys
   gateway:
-    volumes:
+    ports: !override
+      - "127.0.0.1:${Port}:80"
+    depends_on: !override
+      api:
+        condition: service_started
+      frontend:
+        condition: service_started
+    volumes: !override
       - ./ops/nginx.conf:/etc/nginx/nginx.conf:ro
+"@ | Set-Content -LiteralPath compose.restore.yaml -Encoding utf8NoBOM
+    foreach($service in @('caddy','tailscale')){if($service -in $services){"  ${service}:`n    profiles: [restore-external-entrypoint]" | Add-Content -LiteralPath compose.restore.yaml}}
+    @"
 secrets:
   database_password:
     file: ./.secrets/database_password
@@ -60,18 +80,27 @@ secrets:
     file: ./.secrets/bootstrap_password
   setup_token:
     file: ./.secrets/setup_token
-volumes:
-  restored_pgdata:
+volumes: !override
+  pgdata:
     name: ${ProjectName}_restore_pgdata
-  restored_files:
+  files:
     name: ${ProjectName}_restore_files
-  restored_keys:
+  keys:
     name: ${ProjectName}_restore_keys
-"@ | Set-Content -LiteralPath compose.restore.yaml -Encoding utf8NoBOM
+  tls_data:
+    name: ${ProjectName}_restore_tls_data
+  tls_config:
+    name: ${ProjectName}_restore_tls_config
+  tailnet_state:
+    name: ${ProjectName}_restore_tailnet_state
+"@ | Add-Content -LiteralPath compose.restore.yaml -Encoding utf8NoBOM
     $lines=@();if(Test-Path .env){$lines=@(Get-Content .env | Where-Object {$_ -notmatch '^(COMPOSE_PROJECT_NAME|COMPOSE_FILE|COMPOSE_PATH_SEPARATOR|APP_ORIGIN|SECURE_COOKIES|LOVE_CLOUD_PORT|LOVE_CLOUD_BIND)='})}
     $separator=if($IsWindows){';'}else{':'}
     $lines+=@("COMPOSE_PROJECT_NAME=$ProjectName",'COMPOSE_FILE='+((@($files)+@('compose.restore.yaml')) -join $separator),"COMPOSE_PATH_SEPARATOR=$separator","APP_ORIGIN=$Origin",'SECURE_COOKIES='+($originUri.Scheme -eq 'https').ToString().ToLowerInvariant(),"LOVE_CLOUD_PORT=$Port",'LOVE_CLOUD_BIND=127.0.0.1')
     [IO.File]::WriteAllLines((Join-Path $Target '.env'),$lines,[Text.UTF8Encoding]::new($false))
+    $effective=@{COMPOSE_PROJECT_NAME=$ProjectName;COMPOSE_FILE=((@($files)+@('compose.restore.yaml')) -join $separator);COMPOSE_PATH_SEPARATOR=$separator;APP_ORIGIN=$Origin;SECURE_COOKIES=($originUri.Scheme -eq 'https').ToString().ToLowerInvariant();LOVE_CLOUD_PORT="$Port";LOVE_CLOUD_BIND='127.0.0.1';COMPOSE_PROFILES=''}
+    foreach($name in $effective.Keys){$previousEnvironment[$name]=[Environment]::GetEnvironmentVariable($name);[Environment]::SetEnvironmentVariable($name,$effective[$name])}
+    Docker @('compose','config','--quiet') | Out-Null
     Docker @('compose','up','-d','--no-build','db') | Out-Null
     $db=(Docker @('compose','ps','-q','db') | Out-String).Trim()
     $ready=$false
@@ -95,11 +124,18 @@ volumes:
     if(-not $ready){throw 'Restored application readiness failed; inspect docker compose logs --tail 100.'}
     Write-Host "Restored fresh project $ProjectName at $Origin. Verify accounts, originals and TOTP before removing any backup."
 } finally {
+    foreach($name in $previousEnvironment.Keys){[Environment]::SetEnvironmentVariable($name,$previousEnvironment[$name])}
     Pop-Location
     if(Test-Path -LiteralPath $stage){
         $resolved=[IO.Path]::GetFullPath((Resolve-Path -LiteralPath $stage).Path)
         $prefix=Join-Path ([IO.Path]::GetTempPath()) 'lovecloud-restore-'
         if(-not $resolved.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Refusing cleanup outside owned restore staging.'}
-        Remove-Item -LiteralPath $resolved -Recurse -Force
+        if($IsWindows){Remove-Item -LiteralPath $resolved -Recurse -Force}
+        else {
+            # Linux snapshot metadata may be UID1654. This helper is mounted
+            # solely to the just-created, verified staging directory.
+            Docker @('run','--rm','--mount',"type=bind,source=$resolved,target=/restore",'--entrypoint','sh',$backupImage,'-c','rm -rf /restore/* /restore/.[!.]* /restore/..?*') | Out-Null
+            Remove-Item -LiteralPath $resolved -Force
+        }
     }
 }
