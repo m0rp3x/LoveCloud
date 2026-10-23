@@ -302,31 +302,67 @@ def validate_static_nuget_notices(report, out, static=None):
 ALPINE_FETCH = r'''set -eu
 apk add --no-cache alpine-sdk curl >/dev/null
 mkdir -p /output/recipes /output/distfiles
+download_recipe_archive() {
+  archive_url=$1
+  # Both providers are public, exact-commit official repositories. Keep useful
+  # HTTP diagnostics instead of hiding failures behind a generic final error.
+  printf 'Fetching exact aports recipe: %s\n' "$archive_url" >&2
+  if ! curl --fail --silent --show-error --location --connect-timeout 20 --max-time 180 --retry 3 --retry-delay 3 "$archive_url" -o /tmp/aports.tar.gz; then
+    return 1
+  fi
+  if ! tar -tzf /tmp/aports.tar.gz > /tmp/lc-aports-files.txt; then
+    printf 'Invalid aports archive from %s\n' "$archive_url" >&2
+    return 1
+  fi
+}
+acquire_recipe_directory() {
+  repo=$1
+  # Extract only this package's immutable recipe and local patches/data, even
+  # when the official GitHub mirror returns a complete aports repository.
+  awk -v wanted="/$repo/$origin/" 'index($0,wanted) { print }' /tmp/lc-aports-files.txt > /tmp/lc-recipe-files.txt
+  [ -s /tmp/lc-recipe-files.txt ] || return 1
+  rm -rf /tmp/lc-source
+  mkdir -p "/output/recipes/$origin" /tmp/lc-source
+  tar -xzf /tmp/aports.tar.gz -C /tmp/lc-source -T /tmp/lc-recipe-files.txt || exit 1
+  build=$(find /tmp/lc-source -path "*/$repo/$origin/APKBUILD" -print -quit)
+  [ -n "$build" ] || return 1
+  cp -a "$(dirname "$build")/." "/output/recipes/$origin/" || exit 1
+  # Explicit failure is necessary: this function is called from an if clause,
+  # where POSIX shells suppress implicit set -e handling inside functions.
+  (cd "/output/recipes/$origin" && SRCDEST=/output/distfiles abuild -F fetch && SRCDEST=/output/distfiles abuild -F verify) || exit 1
+  printf '%s\n' "$archive_url" > "/output/recipes/$origin/recipe-url.txt"
+}
 while IFS='|' read -r origin version commit; do
   [ -n "$origin" ] || continue
+  case "$origin" in *[!A-Za-z0-9+_.-]*) echo 'Invalid APK source origin.' >&2; exit 1;; esac
+  case "$commit" in ''|*[!0-9a-f]*) echo 'APK source requires an exact commit.' >&2; exit 1;; esac
+  [ "${#commit}" = 40 ] || { echo 'APK source requires a complete commit.' >&2; exit 1; }
   found=0
   for repo in main community testing; do
     recipe="https://gitlab.alpinelinux.org/alpine/aports/-/archive/$commit/aports-$commit.tar.gz?path=$repo/$origin"
-    if curl --fail --location --connect-timeout 20 --max-time 180 --retry 3 --retry-delay 3 "$recipe" -o /tmp/aports.tar.gz 2>/dev/null; then
-      # Fixed private staging path inside this disposable helper only. Keep
-      # output sources/recipes, but do not accumulate full aports checkouts.
-      rm -rf /tmp/lc-source
-      mkdir -p "/output/recipes/$origin" /tmp/lc-source
-      tar -xzf /tmp/aports.tar.gz -C /tmp/lc-source
-      build=$(find /tmp/lc-source -path "*/$repo/$origin/APKBUILD" -print -quit)
-      if [ -n "$build" ]; then
-        cp -a "$(dirname "$build")/." "/output/recipes/$origin/"
-        (cd "/output/recipes/$origin" && SRCDEST=/output/distfiles abuild -F fetch && SRCDEST=/output/distfiles abuild -F verify)
-        printf '%s\n' "$recipe" > "/output/recipes/$origin/recipe-url.txt"
-        found=1
-        break
-      fi
+    if download_recipe_archive "$recipe" && acquire_recipe_directory "$repo"; then
+      found=1
+      break
     fi
   done
+  if [ "$found" = 0 ]; then
+    # Official alpinelinux/aports mirror identifies GitLab alpine/aports as its
+    # homepage. The same full Git commit is mandatory; never fetch a branch or
+    # a latest release. Download this fallback only once, then inspect repos.
+    recipe="https://codeload.github.com/alpinelinux/aports/tar.gz/$commit"
+    if download_recipe_archive "$recipe"; then
+      for repo in main community testing; do
+        if acquire_recipe_directory "$repo"; then
+          found=1
+          break
+        fi
+      done
+    fi
+  fi
   [ "$found" = 1 ] || { echo "Cannot acquire source recipe for $origin $version" >&2; exit 1; }
 done < /output/packages.txt
 rm -rf /tmp/lc-source
-rm -f /tmp/aports.tar.gz
+rm -f /tmp/aports.tar.gz /tmp/lc-aports-files.txt /tmp/lc-recipe-files.txt
 printf 'sources-verified\n' > /output/source-fetch-complete.txt
 '''
 
