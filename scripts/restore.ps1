@@ -35,6 +35,8 @@ foreach($name in @('pgdata','files','keys','tls_data','tls_config','tailnet_stat
     & docker volume inspect "${ProjectName}_restore_$name" *> $null
     if($LASTEXITCODE -eq 0){throw 'Restore volume already exists; choose a fresh project.'}
 }
+& docker network inspect "${ProjectName}_restore_private" *> $null
+if($LASTEXITCODE -eq 0){throw 'Restore network already exists; choose a fresh project.'}
 $stage=[IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetTempPath()) ('lovecloud-restore-'+[guid]::NewGuid().ToString('N'))))
 New-Item -ItemType Directory -Path $stage | Out-Null
 if($IsWindows){$owner=[Security.Principal.WindowsIdentity]::GetCurrent().Name;& icacls $stage /inheritance:r /grant:r "${owner}:(OI)(CI)F" | Out-Null;if($LASTEXITCODE -ne 0){throw 'Cannot protect restore staging.'}}
@@ -52,13 +54,21 @@ try {
     @"
 services:
   db:
+    network_mode: !reset null
+    networks: !override [private]
+    ports: !override []
     volumes: !override
       - pgdata:/var/lib/postgresql
   api:
+    network_mode: !reset null
+    networks: !override [private]
+    ports: !override []
     volumes: !override
       - files:/data/files
       - keys:/data/keys
   gateway:
+    network_mode: !reset null
+    networks: !override [private]
     ports: !override
       - "127.0.0.1:${Port}:80"
     depends_on: !override
@@ -68,6 +78,10 @@ services:
         condition: service_started
     volumes: !override
       - ./ops/nginx.conf:/etc/nginx/nginx.conf:ro
+  frontend:
+    network_mode: !reset null
+    networks: !override [private]
+    ports: !override []
 "@ | Set-Content -LiteralPath compose.restore.yaml -Encoding utf8NoBOM
     foreach($service in @('caddy','tailscale')){if($service -in $services){"  ${service}:`n    profiles: [restore-external-entrypoint]" | Add-Content -LiteralPath compose.restore.yaml}}
     @"
@@ -93,6 +107,9 @@ volumes: !override
     name: ${ProjectName}_restore_tls_config
   tailnet_state:
     name: ${ProjectName}_restore_tailnet_state
+networks: !override
+  private:
+    name: ${ProjectName}_restore_private
 "@ | Add-Content -LiteralPath compose.restore.yaml -Encoding utf8NoBOM
     $lines=@();if(Test-Path .env){$lines=@(Get-Content .env | Where-Object {$_ -notmatch '^(COMPOSE_PROJECT_NAME|COMPOSE_FILE|COMPOSE_PATH_SEPARATOR|APP_ORIGIN|SECURE_COOKIES|LOVE_CLOUD_PORT|LOVE_CLOUD_BIND)='})}
     $separator=if($IsWindows){';'}else{':'}

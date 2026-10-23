@@ -10,6 +10,7 @@ while [ "$#" -gt 0 ]; do
     *) printf 'Unknown option: %s\n' "$1" >&2; exit 2;;
   esac
 done
+if docker network inspect "${project}_restore_private" >/dev/null 2>&1; then echo 'Restore network already exists; choose a fresh project.' >&2; exit 1; fi
 case "$project" in ''|*[!a-z0-9_-]*) echo 'Specify a new lowercase --project name.' >&2; exit 2;; esac
 case "$port" in ''|*[!0-9]*) echo 'Invalid --port.' >&2; exit 2;; esac
 [ -d "$repository" ] && [ -f "$password" ] && [ -n "$target" ] || { echo '--repository, --password-file and empty --target are required.' >&2; exit 2; }
@@ -29,6 +30,7 @@ done
 backup_image=${backup_image:-restic/restic:0.18.0}
 stage=$(mktemp -d "${TMPDIR:-/tmp}/lovecloud-restore.XXXXXX"); chmod 700 "$stage"
 cleanup() {
+  trap - EXIT HUP INT TERM
   code=$?
   case "$stage" in
     */lovecloud-restore.*)
@@ -52,13 +54,21 @@ files=$(cat backup-compose-files.txt)
 cat > compose.restore.yaml <<EOF
 services:
   db:
+    network_mode: !reset null
+    networks: !override [private]
+    ports: !override []
     volumes: !override
       - pgdata:/var/lib/postgresql
   api:
+    network_mode: !reset null
+    networks: !override [private]
+    ports: !override []
     volumes: !override
       - files:/data/files
       - keys:/data/keys
   gateway:
+    network_mode: !reset null
+    networks: !override [private]
     ports: !override
       - "127.0.0.1:${port}:80"
     depends_on: !override
@@ -68,6 +78,10 @@ services:
         condition: service_started
     volumes: !override
       - ./ops/nginx.conf:/etc/nginx/nginx.conf:ro
+  frontend:
+    network_mode: !reset null
+    networks: !override [private]
+    ports: !override []
 EOF
 # External identities/host ports must be reattached after local restore checks.
 for service in caddy tailscale; do
@@ -96,6 +110,9 @@ volumes: !override
     name: ${project}_restore_tls_config
   tailnet_state:
     name: ${project}_restore_tailnet_state
+networks: !override
+  private:
+    name: ${project}_restore_private
 EOF
 # Remove only the copied environment's standard settings, preserving all others.
 if [ -f .env ]; then sed '/^COMPOSE_PROJECT_NAME=/d; /^COMPOSE_FILE=/d; /^COMPOSE_PATH_SEPARATOR=/d; /^APP_ORIGIN=/d; /^SECURE_COOKIES=/d; /^LOVE_CLOUD_PORT=/d; /^LOVE_CLOUD_BIND=/d' .env > .env.restore; mv .env.restore .env; fi

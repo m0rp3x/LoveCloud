@@ -31,6 +31,7 @@ stage=$(mktemp -d "$root/.artifacts/backup.XXXXXX")
 chmod 700 "$stage"
 stopped=false
 cleanup() {
+  trap - EXIT HUP INT TERM
   code=$?
   if [ "$stopped" = true ]; then compose start api >/dev/null || code=1; fi
   # Only the just-created owned mktemp directory can be removed.
