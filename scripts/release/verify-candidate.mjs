@@ -89,6 +89,7 @@ try{
   });
   await check('candidate recreation persistence',async()=>{compose(original,['up','-d','--no-build','--force-recreate']);await ready(originalUrl);checkLocked(original,expected);test(original,originalUrl,'persistence');});
   report.checks.push({name:'Windows Docker full installation',status:'NOT RUN',required:false,detail:'Not a supported release platform; PowerShell7 on Linuxamd64 is tested, native WindowsDocker daemon unavailable.'});
+  report.checks.push({name:'operator public HTTPS and Tailscale authorization',status:'NOT RUN',required:false,detail:'Installer configuration fixtures cover HTTPS origins and overrides. Live domain certificates and tailnet authorization depend on operator infrastructure; this candidate acceptance uses isolated loopback HTTP.'});
 }catch(error){if(!report.checks.some(c=>c.status==='FAIL'))report.checks.push({name:'candidate orchestration',status:'FAIL',detail:error.message});console.error('FAIL candidate acceptance: '+error.message);process.exitCode=1;}
 finally{
   if(checksContainer)run('docker',['rm','-f','-v',checksContainer],{allowFailure:true,capture:true});
