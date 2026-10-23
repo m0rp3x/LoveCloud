@@ -266,6 +266,39 @@ def collect_native_sources(report, out):
     return result
 
 
+def validate_static_nuget_notices(report, out, static=None):
+    """Reject SPDX-only/wrapper-only delivery: full runtime notices must ship.
+
+    The actual-image NuGet inventory selects packages. Their retained actual
+    license text/copyright must also appear in the static image license bundle,
+    either as its own file or inside an upstream aggregate. This is stronger
+    than matching an SPDX family while silently dropping a different owner.
+    """
+    static=Path(static) if static is not None else ROOT/'licenses'
+    normalize=lambda text:text.replace('\r\n','\n').strip()
+    texts=[normalize(path.read_text(encoding='utf-8-sig')) for path in static.rglob('*.txt')]
+    index=json.loads((static/'nuget-license-index.json').read_text(encoding='utf-8'))['packages']
+    for package,entry in index.items():
+        file=static/entry['file']
+        if not file.is_file() or hashlib.sha256(file.read_bytes().replace(b'\r\n',b'\n')).hexdigest()!=entry['sha256']:
+            raise RuntimeError('Static NuGet notice provenance/hash mismatch: '+package)
+    checks=[]
+    for package in sorted(set(report['nuget'])):
+        name,version=package.rsplit('/',1)
+        directory=out/'nuget'/safe_name(name+'-'+version)
+        metadata=json.loads((directory/'source.json').read_text(encoding='utf-8'))
+        files=[directory/name for name in metadata['notices'] if 'license' in name.lower()]
+        notices=[normalize(file.read_text(encoding='utf-8-sig')) for file in files]
+        if not notices or not any(len(notice)>300 and any(notice in text for text in texts) for notice in notices):
+            raise RuntimeError('Actual NuGet copyright/license missing from API image bundle: '+package)
+        if package.startswith('Npgsql'):
+            if package not in index: raise RuntimeError('Exact Npgsql version requires reviewed notice provenance: '+package)
+        checks.append({'package':package,'status':'PASS','detail':'Full actual license/copyright retained in static API image bundle; SPDX alone is insufficient.'})
+    result={'status':'PASS','checks':checks}
+    (out/'static-nuget-notices.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    return result
+
+
 ALPINE_FETCH = r'''set -eu
 apk add --no-cache alpine-sdk curl >/dev/null
 mkdir -p /output/recipes /output/distfiles
@@ -409,6 +442,7 @@ def main():
         report['images'][role]={'image':image,'id':inventory['id'],'licenseFiles':len(inventory['licenseFiles']),'packages':len(inventory['packages'])}
         if role=='api':
             collect_nuget(inventory,out)
+            report['staticNugetNotices']=validate_static_nuget_notices(inventory,out,out/'api/files/usr/share/licenses/lovecloud/licenses')
             report['nativeSources']=collect_native_sources(inventory,out)
         report['sources'][role]=collect_os_sources(role,image,inventory,out,args.fetch_os_sources)
     scan_layers(args.frontend_image,out)

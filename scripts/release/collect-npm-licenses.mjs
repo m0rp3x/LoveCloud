@@ -11,7 +11,7 @@ if (!args['--root'] || !args['--source'] || !args['--output']) throw new Error('
 const runtime=path.resolve(args['--root']), source=path.resolve(args['--source']), output=path.resolve(args['--output']);
 fs.mkdirSync(output, {recursive:true});
 if (fs.readdirSync(output).length) throw new Error('Notice output must be empty.');
-const files=new Map(), packages=[];
+const files=new Map(), packages=[], clientPackages=[], clientVisited=new Set();
 function copy(file,relative) {
   const destination=path.join(output,relative);
   fs.mkdirSync(path.dirname(destination),{recursive:true});
@@ -45,5 +45,36 @@ function visit(directory) {
 }
 visit(runtime);
 if(!packages.length)throw new Error('No runtime packages found.');
-fs.writeFileSync(path.join(output,'runtime-notice-inventory.json'),JSON.stringify({scope:'exact-version runtime package notices recovered from build sources; bundled notices may cover additional upstream modules',packages,files:[...files.values()]},null,2)+'\n');
-console.log(`Preserved ${files.size} notices/manifests for ${packages.length} runtime package manifests (no executable/native payload).`);
+function resolveClient(name,from,required) {
+  // Follow npm's installed resolution without relying on package.json exports.
+  let directory=from;
+  while(directory.startsWith(path.dirname(source)+path.sep) || directory===path.dirname(source)){
+    const candidate=path.join(directory,'node_modules',name,'package.json');
+    if(fs.existsSync(candidate) && candidate.startsWith(source+path.sep))return candidate;
+    const parent=path.dirname(directory);if(parent===directory)break;directory=parent;
+  }
+  const hoisted=path.join(source,name,'package.json');
+  if(fs.existsSync(hoisted))return hoisted;
+  if(required)throw new Error(`Required client notice dependency is missing: ${name}`);
+  return null;
+}
+function clientGraph(name,from,required=true){
+  // The server collector covers Next's vendored notices. The disabled sharp
+  // optimizer is not part of any deliberately selected client graph.
+  if(name==='next' || name==='sharp' || name.startsWith('@img/'))throw new Error(`Unexpected optimizer/Next dependency in selected client graph: ${name}`);
+  const manifest=resolveClient(name,from,required);
+  if(!manifest || clientVisited.has(manifest))return;
+  clientVisited.add(manifest);
+  const data=JSON.parse(fs.readFileSync(manifest,'utf8'));
+  clientPackages.push({path:path.relative(source,manifest).split(path.sep).join('/'),name:data.name,version:data.version,license:data.license});
+  copy(manifest,path.relative(source,manifest));
+  notices(path.dirname(manifest));
+  const directory=path.dirname(manifest);
+  for(const dependency of Object.keys(data.dependencies||{}))clientGraph(dependency,directory,true);
+  for(const dependency of Object.keys(data.optionalDependencies||{}))clientGraph(dependency,directory,false);
+  for(const dependency of Object.keys(data.peerDependencies||{}))clientGraph(dependency,directory,false);
+}
+const clientRoots=(args['--client-roots']||'').split(',').filter(Boolean);
+for(const name of clientRoots)clientGraph(name,path.dirname(source));
+fs.writeFileSync(path.join(output,'runtime-notice-inventory.json'),JSON.stringify({scope:'exact-version server runtime package notices recovered from build sources; bundled notices may cover additional upstream modules',packages,clientNoticeGraph:{scope:'notices-only superset of selected browser production graphs; not an actual binary inventory or SBOM',roots:clientRoots,packages:clientPackages},files:[...files.values()]},null,2)+'\n');
+console.log(`Preserved ${files.size} notices/manifests for ${packages.length} server runtime and ${clientPackages.length} client-graph manifests (no executable/native payload).`);

@@ -18,6 +18,10 @@ JavaScript
 ----------
 Next.js (MIT), React / React DOM (MIT), SWR (MIT), Microsoft SignalR (MIT),
 qrcode (MIT) and their runtime dependencies retain their original notices.
+Browser-bundled dependencies are covered by a separate notices-only production
+graph; server standalone tracing alone is not a client license inventory.
+SignalR npm omits its own MIT file; licenses/SignalR-LICENSE.txt preserves the
+official release text, alongside its shipped es6-promise third-party notices.
 The exact runtime packages are collected from the shipped image, rather than
 assuming every optional entry in package-lock.json is installed.
 
@@ -37,7 +41,9 @@ licenses/LGPL-2.1.txt, LGPL-3.0.txt, GPL-3.0.txt and docs/LICENSING_AUDIT.md.
 ----
 ASP.NET Core, .NET runtime, Entity Framework Core and Microsoft libraries: MIT,
 with embedded third-party notices. Npgsql and its EF Core provider: PostgreSQL
-License. SkiaSharp: MIT, Xamarin / Microsoft copyrights preserved in
+License; exact-version full Npgsql notices/provenance are preserved in
+licenses/Npgsql-LICENSE.txt, Npgsql-EFCore-LICENSE.txt and nuget-license-index.json.
+SkiaSharp: MIT, Xamarin / Microsoft copyrights preserved in
 licenses/SkiaSharp-LICENSE.txt. Native libSkiaSharp also incorporates Skia and
 other libraries under their own licenses. The NuGet package's aggregated
 THIRD-PARTY-NOTICES is collected into the release licensing bundle.
@@ -48,6 +54,9 @@ Node.js, Alpine Linux / musl / BusyBox / OpenSSL, .NET's Linux distribution,
 nginx, PostgreSQL, and optional Caddy / Tailscale remain separately licensed.
 SBOMs describe the actual release image digests. Image-bundled license texts and
 package/source metadata are retained in the collected licensing bundle.
+BusyBox and alpine-baselayout in the actual Alpine runtime are GPL-2.0-only;
+licenses/GPL-2.0.txt contains the full GNU text, and the release source bundle
+includes their exact APKBUILD recipes and checksum-verified sources.
 Sources for the exact Alpine packages are available through the matching
 Alpine package repository; Debian/Ubuntu sources through their corresponding
 source package repositories. Consult the SBOM and recorded image provenance.

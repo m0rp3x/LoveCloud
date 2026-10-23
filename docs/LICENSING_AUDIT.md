@@ -37,6 +37,23 @@ someone may upload into their own installation.
 
 ## npm / NuGet / native components
 
+The client browser production graphs (React/React DOM, SWR, SignalR and QRCode)
+are collected separately as a notices-only superset, including installed
+production transitive dependencies. Server standalone tracing omits some of
+these client-only modules. This notice graph is not labeled as a binary SBOM.
+SignalR 10.0.11 npm omits its own MIT file; the full text from the official
+ASP.NET Core v10.0.11 source commit is supplied with provenance. Exact Npgsql
+10.0.3 and EF provider 10.0.3 PostgreSQL-license texts retain their distinct
+copyright years. EF Core 10.0.13 upstream MIT text matches the static .NET
+license including copyright after line-ending/final-newline normalization.
+
+Actual-image NuGet notice validation rejects SPDX-only stubs and requires
+the full collected copyright/license text inside the exported API image bundle.
+
+Actual frontend SBOM identifies BusyBox 1.37.0-r31 and alpine-baselayout 3.7.2-r1
+as GPL-2.0-only; the full official GNU GPL-2.0 text is included alongside the
+corresponding exact-source acquisition bundle.
+
 Runtime inventory must come from the final candidate image, not all optional
 lockfile entries. The release collector records installed package manifests and
 license/notice SHA-256s. Direct package declarations and source provenance remain
