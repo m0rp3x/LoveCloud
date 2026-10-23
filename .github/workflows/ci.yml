@@ -16,7 +16,7 @@ concurrency:
 jobs:
   source:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 45
     services:
       checks-postgres:
         image: postgres:18-alpine
@@ -70,6 +70,9 @@ jobs:
       - name: Actual historical Ubuntu source probe (isolated public runtime base)
         timeout-minutes: 20
         run: python3 tests/os-source-probe.py --report "${{ runner.temp }}/os-source-probe.json"
+      - name: Actual Alpine busybox source probe (isolated public Node base)
+        timeout-minutes: 12
+        run: python3 tests/os-source-probe.py --probe alpine --report "${{ runner.temp }}/alpine-source-probe.json"
       - name: JavaScript syntax and operational shell syntax
         run: |
           for file in tests/*.mjs scripts/release/*.mjs; do node --check "$file"; done

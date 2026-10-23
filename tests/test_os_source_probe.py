@@ -11,6 +11,10 @@ spec.loader.exec_module(probe)
 
 
 class SourceEvidenceChecks(unittest.TestCase):
+    def test_probe_images_are_complete_immutable_references(self):
+        for image in [probe.IMAGE,probe.NODE_IMAGE]:
+            self.assertRegex(image,r'^.+@sha256:[0-9a-f]{64}$')
+
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(prefix='lovecloud-source-evidence-')
         self.addCleanup(self.temp.cleanup)
