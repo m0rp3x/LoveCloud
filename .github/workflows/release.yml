@@ -1,0 +1,265 @@
+name: LoveCloud release
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Build and verify a candidate, or promote a verified candidate without rebuilding
+        type: choice
+        options: [candidate, publish]
+        default: candidate
+      candidate_run:
+        description: Successful candidate workflow run ID (publish only; dispatch on the same source commit)
+        type: string
+      publish_release:
+        description: Publish the prepared draft after all gates (otherwise keep draft)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: lovecloud-release-${{ inputs.phase }}
+  cancel-in-progress: false
+jobs:
+  candidate:
+    if: inputs.phase == 'candidate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      NEXT_TELEMETRY_DISABLED: '1'
+      BASELINE_SHA: 381a7965e6dab32e7acfc4dfe0184979ceeafab8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate version and fixed source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+          python3 - <<'PY'
+          import json,pathlib,re
+          v=pathlib.Path('VERSION').read_text().strip()
+          assert re.fullmatch(r'\d+\.\d+\.\d+',v)
+          assert json.loads(pathlib.Path('frontend/package.json').read_text())['version']==v
+          assert '<Version>'+v+'</Version>' in pathlib.Path('backend/LoveCloud.Api.csproj').read_text()
+          PY
+          mkdir -p .artifacts/release-lock .artifacts/release-public
+      - name: Resolve immutable base and infrastructure images
+        run: python3 scripts/release/resolve-images.py --output .artifacts/release-public/build-inputs.json
+      - name: Source checks
+        id: sourcechecks
+        run: |
+          set -euo pipefail
+          npm ci --prefix frontend
+          npm run typecheck --prefix frontend
+          npm run build --prefix frontend
+          dotnet restore backend/LoveCloud.Api.csproj --locked-mode
+          dotnet build backend/LoveCloud.Api.csproj -c Release --no-restore
+      - name: Registry login with repository-scoped GITHUB_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Build candidate images ONCE
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILDER=$(python3 -c 'import json;print(json.load(open(".artifacts/release-public/build-inputs.json"))["builder"]["reference"])')
+          docker buildx create --use --name lovecloud-release-builder --driver-opt "image=$BUILDER"
+          VERSION=$(cat VERSION)
+          export VERSION
+          python3 - <<'PY'
+          import json,os,pathlib,subprocess
+          b=json.loads(pathlib.Path('.artifacts/release-public/build-inputs.json').read_text())
+          args={'VERSION':os.environ['VERSION'],'REVISION':os.environ['GITHUB_SHA'], 'NODE_IMAGE':b['node']['reference'], 'DOTNET_SDK_IMAGE':b['dotnetSdk']['reference'],'DOTNET_RUNTIME_IMAGE':b['dotnetRuntime']['reference']}
+          for name in ['api','frontend']:
+              cmd=['docker','buildx','build','--platform','linux/amd64','--provenance=false','--sbom=false','--push','--file',('backend' if name=='api' else 'frontend')+'/Dockerfile','--tag','ghcr.io/m0rp3x/lovecloud-'+name+':sha-'+os.environ['GITHUB_SHA'],'--metadata-file','.artifacts/'+name+'-metadata.json']
+              for key,value in args.items(): cmd+=['--build-arg',key+'='+value]
+              subprocess.run(cmd+['.'],check=True)
+          PY
+      - name: Lock candidate digests
+        run: |
+          set -euo pipefail
+          API_DIGEST=$(python3 -c 'import json;print(json.load(open(".artifacts/api-metadata.json"))["containerimage.digest"])')
+          FRONTEND_DIGEST=$(python3 -c 'import json;print(json.load(open(".artifacts/frontend-metadata.json"))["containerimage.digest"])')
+          python3 scripts/release/lock-images.py --inputs .artifacts/release-public/build-inputs.json --api "ghcr.io/m0rp3x/lovecloud-api@$API_DIGEST" --frontend "ghcr.io/m0rp3x/lovecloud-frontend@$FRONTEND_DIGEST" --source-sha "$GITHUB_SHA" --output-dir .artifacts/release-lock
+          cp .artifacts/release-lock/image-lock.json .artifacts/release-public/image-lock.json
+      - name: Runtime SBOM and corresponding licenses
+        id: licensechecks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,subprocess
+          images=json.loads(pathlib.Path('.artifacts/release-lock/image-lock.json').read_text())['images']
+          for key in ['api','frontend']:
+              image=images[key]['reference']
+              subprocess.run(['docker','pull',image],check=True)
+              with open('.artifacts/release-public/'+key+'.spdx.json','w') as f:
+                  subprocess.run(['docker','run','--rm','-v','/var/run/docker.sock:/var/run/docker.sock',images['sbom']['reference'],'docker:'+image,'-o','spdx-json'],stdout=f,check=True)
+          cmd=['python3','scripts/release/collect-licenses.py','--api-image',images['api']['reference'],'--frontend-image',images['frontend']['reference'],'--output-dir','.artifacts/release-licenses','--fetch-os-sources']
+          for name in ['db','gateway','caddy','tailscale','backup']: cmd+=['--infrastructure-image',name+'='+images[name]['reference']]
+          subprocess.run(cmd,check=True)
+          PY
+          tar -czf ".artifacts/release-public/lovecloud-v$(cat VERSION)-third-party-licenses.tar.gz" -C .artifacts/release-licenses .
+      - name: Build isolated original functional baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/baseline-source
+          git archive "$BASELINE_SHA" | tar -x -C .artifacts/baseline-source
+          python3 - <<'PY'
+          import json,pathlib,subprocess,os
+          b=json.loads(pathlib.Path('.artifacts/release-public/build-inputs.json').read_text())
+          source=pathlib.Path('.artifacts/baseline-source')
+          # Only pin the baseline's existing FROM references; preserve app code.
+          for name,folder in [('api','backend'),('frontend','frontend')]:
+              file=source/folder/'Dockerfile'; text=file.read_text()
+              for tag,key in [('mcr.microsoft.com/dotnet/sdk:10.0','dotnetSdk'),('mcr.microsoft.com/dotnet/aspnet:10.0','dotnetRuntime'),('node:24-alpine','node')]: text=text.replace(tag,b[key]['reference'])
+              file.write_text(text)
+              subprocess.run(['docker','buildx','build','--platform','linux/amd64','--load','--provenance=false','--tag','lovecloud-'+name+':baseline-'+os.environ['BASELINE_SHA'],str(source/folder)],check=True)
+          lines=['services:']
+          for service in ['api','frontend']:
+              tag='lovecloud-'+service+':baseline-'+os.environ['BASELINE_SHA']
+              ref=subprocess.check_output(['docker','image','inspect',tag,'--format','{{.Id}}'],text=True).strip()
+              lines+=['  '+service+':','    image: '+ref,'    pull_policy: never']
+          for service in ['db','gateway']: lines+=['  '+service+':','    image: '+b[service]['reference']]
+          pathlib.Path('.artifacts/baseline.images.yaml').write_text('\n'.join(lines)+'\n')
+          PY
+      - name: Package exact commit into source and installation archives
+        run: python3 scripts/release/package.py --source-sha "$GITHUB_SHA" --images .artifacts/release-lock/image-lock.json --output-dir .artifacts/release-public --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+      - name: Verify final archives, candidate images, setup races, backup and upgrade
+        run: |
+          bash scripts/release/verify-candidate.sh --archive ".artifacts/release-public/lovecloud-v$(cat VERSION)-install.tar.gz" --images .artifacts/release-lock/compose.images.yaml --source-sha "$GITHUB_SHA" --report .artifacts/release-public/verification.json --baseline-images .artifacts/baseline.images.yaml
+      - name: Finalize immutable release manifest
+        if: always()
+        env:
+          SOURCE_CHECKS: ${{ steps.sourcechecks.outcome }}
+          LICENSE_CHECKS: ${{ steps.licensechecks.outcome }}
+        shell: bash
+        run: |
+          if test -f .artifacts/release-public/verification.json && test -f .artifacts/release-public/release-manifest.json; then
+            python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('.artifacts/release-public/verification.json');r=json.loads(p.read_text())
+          status='PASS' if os.environ['SOURCE_CHECKS']=='success' else 'FAIL'
+          r['checks'] += [{'name':'frontend lockfile, typecheck and production build','status':status,'detail':'Explicit source check before image build at this exact SHA.'},{'name':'backend locked restore and Release build','status':status,'detail':'Explicit source check before image build at this exact SHA.'}]
+          r['checks'].append({'name':'actual runtime SBOM, license notices and corresponding sources','status':'PASS' if os.environ['LICENSE_CHECKS']=='success' else 'FAIL','detail':'Actual pinned own/infrastructure images; optional native optimizer absent from final layers; exact OS source acquisition enabled.'})
+          p.write_text(json.dumps(r,indent=2)+'\n')
+          PY
+            python3 scripts/release/package.py --finalize --source-sha "$GITHUB_SHA" --images .artifacts/release-lock/image-lock.json --output-dir .artifacts/release-public --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --report .artifacts/release-public/verification.json
+          fi
+      - name: Upload only explicitly public artifacts (never credentials or test workspaces)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            .artifacts/release-public/lovecloud-v*-install.tar.gz
+            .artifacts/release-public/lovecloud-v*-install.zip
+            .artifacts/release-public/lovecloud-v*-source.tar.gz
+            .artifacts/release-public/lovecloud-v*-third-party-licenses.tar.gz
+            .artifacts/release-public/api.spdx.json
+            .artifacts/release-public/frontend.spdx.json
+            .artifacts/release-public/build-inputs.json
+            .artifacts/release-public/image-lock.json
+            .artifacts/release-public/verification.json
+            .artifacts/release-public/release-manifest.json
+            .artifacts/release-public/SHA256SUMS
+  publish:
+    if: inputs.phase == 'publish'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: write
+      packages: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CANDIDATE_RUN: ${{ inputs.candidate_run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require a successful candidate from this exact source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$CANDIDATE_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN" > /tmp/candidate-run.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('/tmp/candidate-run.json'))
+          assert r['conclusion']=='success' and r['head_sha']==os.environ['GITHUB_SHA']
+          assert r['path']=='.github/workflows/release.yml'
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          run-id: ${{ inputs.candidate_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: .artifacts/release-public
+      - name: Verify anonymous GHCR pull using an EMPTY Docker configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 700 /tmp/lovecloud-anonymous-docker
+          python3 - <<'PY'
+          import json,pathlib,subprocess,os
+          m=json.loads(pathlib.Path('.artifacts/release-public/release-manifest.json').read_text())
+          env=dict(os.environ,DOCKER_CONFIG='/tmp/lovecloud-anonymous-docker')
+          for key in ['api','frontend']:
+              subprocess.run(['docker','pull',m['images'][key]['reference']],env=env,check=True)
+          PY
+          python3 scripts/release/validate-release.py .artifacts/release-public --source-sha "$GITHUB_SHA"
+          python3 scripts/release/package.py --finalize --anonymous-pull-verified --source-sha "$GITHUB_SHA" --images .artifacts/release-public/image-lock.json --output-dir .artifacts/release-public --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN"
+      - name: Promote the verified digests without rebuilding
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          python3 - <<'PY'
+          import json,pathlib,subprocess
+          m=json.loads(pathlib.Path('.artifacts/release-public/release-manifest.json').read_text())
+          for key in ['api','frontend']:
+              ref=m['images'][key]['reference']; repo,digest=ref.split('@')
+              for version in [m['version'],'v'+m['version']]:
+                  tag=repo+':'+version
+                  subprocess.run(['docker','buildx','imagetools','create','--prefer-index=false','--tag',tag,ref],check=True)
+                  actual=json.loads(subprocess.check_output(['docker','buildx','imagetools','inspect',tag,'--format','{{json .Manifest}}'],text=True))['digest']
+                  if actual!=digest: raise RuntimeError('Promotion changed verified image digest')
+          PY
+      - name: Create exact tag and draft release
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(cat VERSION)
+          TAG="v$VERSION"
+          if git show-ref --verify --quiet "refs/tags/$TAG"; then
+            test "$(git rev-list -n1 "$TAG")" = "$GITHUB_SHA"
+          else
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA"
+          fi
+          if gh release view "$TAG" --json isDraft > /tmp/lovecloud-release.json 2>/dev/null; then
+            test "$(python3 -c 'import json;print(json.load(open("/tmp/lovecloud-release.json"))["isDraft"])')" = True
+          else
+            gh release create "$TAG" --verify-tag --draft --title "LoveCloud $TAG — a little home for two hearts" --notes-file "docs/releases/$TAG.md"
+          fi
+          gh release upload "$TAG" .artifacts/release-public/* --clobber
+      - name: Publish the verified draft
+        if: inputs.publish_release
+        run: gh release edit "v$(cat VERSION)" --draft=false
