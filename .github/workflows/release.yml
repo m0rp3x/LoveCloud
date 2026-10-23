@@ -111,6 +111,8 @@ jobs:
               subprocess.run(['docker','pull',image],check=True)
               with open('.artifacts/release-public/'+key+'.spdx.json','w') as f:
                   subprocess.run(['docker','run','--rm','-v','/var/run/docker.sock:/var/run/docker.sock',images['sbom']['reference'],'docker:'+image,'-o','spdx-json'],stdout=f,check=True)
+          for name in ['db','gateway','caddy','tailscale','backup']:
+              subprocess.run(['docker','pull',images[name]['reference']],check=True)
           cmd=['python3','scripts/release/collect-licenses.py','--api-image',images['api']['reference'],'--frontend-image',images['frontend']['reference'],'--output-dir','.artifacts/release-licenses','--fetch-os-sources']
           for name in ['db','gateway','caddy','tailscale','backup']: cmd+=['--infrastructure-image',name+'='+images[name]['reference']]
           subprocess.run(cmd,check=True)
