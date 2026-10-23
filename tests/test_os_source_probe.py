@@ -32,6 +32,13 @@ class SourceEvidenceChecks(unittest.TestCase):
         for uri in uris:
             with self.subTest(uri=uri),self.assertRaises(AssertionError):probe.verify_aports_provenance(uri,commit)
 
+    def test_apk_tools_recipe_path_uses_its_actual_origin(self):
+        commit='a'*40
+        uri=f'https://gitlab.alpinelinux.org/alpine/aports/-/archive/{commit}/aports-{commit}.tar.gz?path=main/apk-tools'
+        self.assertIn('official Alpine',probe.verify_aports_provenance(uri,commit,'apk-tools'))
+        with self.assertRaisesRegex(AssertionError,'recipe subtree'):
+            probe.verify_aports_provenance(uri,commit,'busybox')
+
     def test_probe_images_are_complete_immutable_references(self):
         for image in [probe.IMAGE,probe.NODE_IMAGE]:
             self.assertRegex(image,r'^.+@sha256:[0-9a-f]{64}$')
