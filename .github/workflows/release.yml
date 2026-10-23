@@ -230,8 +230,31 @@ jobs:
           for key in ['api','frontend']:
               subprocess.run(['docker','pull',m['images'][key]['reference']],env=env,check=True)
           PY
+          python3 scripts/release/validate-release.py .artifacts/release-public --source-sha "$GITHUB_SHA" --pre-publication
+      - name: Require successful Pages deployment and live browser acceptance at the exact release SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs?status=success&per_page=100" > /tmp/lovecloud-pages-runs.json
+          PAGES_RUN=$(python3 - <<'PY'
+          import json,os
+          matches=[r for r in json.load(open('/tmp/lovecloud-pages-runs.json'))['workflow_runs'] if r['head_sha']==os.environ['GITHUB_SHA'] and r['conclusion']=='success']
+          if not matches: raise SystemExit('No successful Pages deployment/live acceptance exists at this exact release SHA. Dispatch pages.yml on this source commit first.')
+          print(matches[0]['id'])
+          PY
+          )
+          gh run download "$PAGES_RUN" -n preview-verification -D .artifacts/preview-proof/artifact
+          gh run download "$PAGES_RUN" -n preview-live-verification -D .artifacts/preview-proof/live
+          python3 - <<'PY'
+          import json,os,urllib.request
+          url='https://m0rp3x.github.io/LoveCloud/preview-version.json?release='+os.environ['GITHUB_SHA']+'&run='+os.environ['GITHUB_RUN_ID']
+          with urllib.request.urlopen(url,timeout=30) as response: meta=json.load(response)
+          if meta['sourceSha']!=os.environ['GITHUB_SHA']: raise RuntimeError('Published Pages source marker does not match the release commit')
+          PY
+          cp .artifacts/preview-proof/artifact/preview-verification.json .artifacts/release-public/preview-verification.json
+          cp .artifacts/preview-proof/live/preview-live-verification.json .artifacts/release-public/preview-public-verification.json
+          python3 scripts/release/package.py --finalize --anonymous-pull-verified --source-sha "$GITHUB_SHA" --images .artifacts/release-public/image-lock.json --output-dir .artifacts/release-public --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN" --preview-report .artifacts/release-public/preview-verification.json --public-preview-report .artifacts/release-public/preview-public-verification.json --preview-run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$PAGES_RUN"
           python3 scripts/release/validate-release.py .artifacts/release-public --source-sha "$GITHUB_SHA"
-          python3 scripts/release/package.py --finalize --anonymous-pull-verified --source-sha "$GITHUB_SHA" --images .artifacts/release-public/image-lock.json --output-dir .artifacts/release-public --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN"
       - name: Promote the verified digests without rebuilding
         shell: bash
         run: |
@@ -268,3 +291,14 @@ jobs:
       - name: Publish the verified draft
         if: inputs.publish_release
         run: gh release edit "v$(cat VERSION)" --draft=false
+      - name: Install the published public archive anonymously
+        id: publicsmoke
+        if: inputs.publish_release
+        run: python3 scripts/release/public-smoke.py --expected-manifest .artifacts/release-public/release-manifest.json --source-sha "$GITHUB_SHA" --report .artifacts/public-smoke-report.json
+      - name: Upload only sanitized public-install smoke result
+        if: always() && inputs.publish_release
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-install-smoke
+          path: .artifacts/public-smoke-report.json
+          if-no-files-found: warn

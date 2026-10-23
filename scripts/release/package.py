@@ -18,6 +18,14 @@ FILES = ['VERSION', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES', '.env.example',
          'README.md', 'README.ru.md']
 TREES = ['ops', 'licenses', 'docs']
 BASELINE = '381a7965e6dab32e7acfc4dfe0184979ceeafab8'
+PREVIEW_URL = 'https://m0rp3x.github.io/LoveCloud/'
+PREVIEW_CHECKS = {
+    'Pages prefix assets, clear simulation notice and installation link',
+    'folder creation and independent tabs', 'planner, wish and social publication actions',
+    'explicit simulated vault code', 'synthetic upload without real file selection',
+    'reset clears in-memory changes', 'mobile navigation and creation at390px',
+    'local resources only, no backend traffic or persistent state',
+}
 
 def sha(path):
     return hashlib.file_digest(path.open('rb'), 'sha256').hexdigest()
@@ -26,7 +34,7 @@ def write_manifest(out, manifest):
     eligible = sorted(p for p in out.iterdir() if p.is_file() and p.name != 'release-manifest.json' and p.name != 'SHA256SUMS')
     # This directory is dedicated to public release artifacts, never test state.
     for p in eligible:
-        if not (p.name.startswith('lovecloud-') or p.name.endswith('.spdx.json') or p.name in ['verification.json', 'build-inputs.json', 'image-lock.json']):
+        if not (p.name.startswith('lovecloud-') or p.name.endswith('.spdx.json') or p.name in ['verification.json', 'build-inputs.json', 'image-lock.json', 'preview-verification.json', 'preview-public-verification.json']):
             raise RuntimeError('Unexpected public artifact: ' + p.name)
     manifest['artifacts'] = [{'name': p.name, 'sha256': sha(p), 'bytes': p.stat().st_size} for p in eligible]
     target = out / 'release-manifest.json'
@@ -42,6 +50,9 @@ def main():
     parser.add_argument('--report')
     parser.add_argument('--finalize', action='store_true')
     parser.add_argument('--anonymous-pull-verified', action='store_true')
+    parser.add_argument('--preview-report')
+    parser.add_argument('--public-preview-report')
+    parser.add_argument('--preview-run-url')
     a = parser.parse_args()
     if not re.fullmatch('[0-9a-f]{40}', a.source_sha):
         parser.error('Full Git SHA required')
@@ -127,6 +138,22 @@ def main():
             raise RuntimeError('Anonymous pull is a post-acceptance publication check')
         manifest['checks'] = [c for c in manifest['checks'] if c['name'] != 'anonymous GHCR pull']
         manifest['checks'].append({'name': 'anonymous GHCR pull', 'status': 'PASS', 'detail': 'Both exact own-image digests pulled using an empty Docker configuration in publication workflow.'})
+    if any([a.preview_report, a.public_preview_report, a.preview_run_url]):
+        if not a.finalize or not all([a.preview_report, a.public_preview_report, a.preview_run_url]):
+            raise RuntimeError('Both preview reports and the successful exact-commit Pages run are required')
+        for file, public in [(a.preview_report, False), (a.public_preview_report, True)]:
+            report = json.loads(pathlib.Path(file).read_text())
+            if report['sourceSha'] != a.source_sha or not PREVIEW_CHECKS.issubset({c['name'] for c in report['checks']}) or any(c['status'] != 'PASS' for c in report['checks']):
+                raise RuntimeError('Preview was not completely verified at this release SHA')
+            if public and (report.get('url') != PREVIEW_URL or report.get('publishedSourceSha') != a.source_sha):
+                raise RuntimeError('Public preview verification used an unexpected origin')
+        manifest['checks'] = [c for c in manifest['checks'] if c['name'] not in ['interactive preview artifact', 'published interactive preview']]
+        manifest['checks'] += [
+            {'name': 'interactive preview artifact', 'status': 'PASS', 'detail': 'Exact-commit Pages build artifact: desktop/mobile actions, reset, tab isolation, assets and no backend traffic.'},
+            {'name': 'published interactive preview', 'status': 'PASS', 'detail': 'Same complete Chromium acceptance repeated at ' + PREVIEW_URL + '; public source marker matches release SHA.'},
+        ]
+        manifest['preview'] = {'url': PREVIEW_URL, 'sourceSha': a.source_sha, 'workflowRun': a.preview_run_url,
+                               'artifactReport': pathlib.Path(a.preview_report).name, 'publicReport': pathlib.Path(a.public_preview_report).name}
     write_manifest(out, manifest)
 
 if __name__ == '__main__':

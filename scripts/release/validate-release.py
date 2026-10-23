@@ -11,6 +11,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('directory')
     parser.add_argument('--source-sha', required=True)
+    parser.add_argument('--pre-publication', action='store_true', help='Validate original candidate before adding Pages and anonymous-pull publication evidence')
     a = parser.parse_args()
     directory = pathlib.Path(a.directory)
     manifest = json.loads((directory / 'release-manifest.json').read_text())
@@ -29,6 +30,8 @@ def main():
         'frontend lockfile, typecheck and production build', 'backend locked restore and Release build',
         'actual runtime SBOM, license notices and corresponding sources',
     }
+    if not a.pre_publication:
+        required |= {'interactive preview artifact', 'published interactive preview', 'anonymous GHCR pull'}
     if not required.issubset({c['name'] for c in checks}):
         raise RuntimeError('Mandatory acceptance checks are missing from the manifest')
     if not checks or any(c['status'] != 'PASS' for c in checks if c.get('required', True)):
