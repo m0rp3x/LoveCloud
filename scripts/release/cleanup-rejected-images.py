@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remove only explicitly identified test images from failed release runs.
+"""Remove only explicitly identified test images from failed or cancelled runs.
 
 LOVECLOUD_REJECTED_CANDIDATES is optional repository-variable JSON, with records
 {package, digest, sourceSha, runId}. Never infer rejection from tag age alone.
@@ -45,8 +45,8 @@ def main():
             raise RuntimeError('Refusing to remove the current release candidate')
         run = api(f'repos/{repository}/actions/runs/{record["runId"]}')
         if (run['head_sha'] != record['sourceSha'] or run['path'] != '.github/workflows/release.yml'
-                or run['status'] != 'completed' or run['conclusion'] != 'failure'):
-            raise RuntimeError('The explicitly rejected release run must have failed')
+                or run['status'] != 'completed' or run['conclusion'] not in {'failure', 'cancelled'}):
+            raise RuntimeError('The explicitly rejected release run must have failed or been cancelled')
         base = 'users/m0rp3x/packages/container/' + package
         info = api(base)
         if (info.get('repository') or {}).get('full_name') != repository:
