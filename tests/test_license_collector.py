@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shlex
 import shutil
 from pathlib import Path
 import subprocess
@@ -192,6 +193,42 @@ class LicenseCollectorChecks(unittest.TestCase):
         report,static=self.notice_fixture(indexed=False)
         with self.assertRaisesRegex(RuntimeError,'Exact Npgsql version requires reviewed notice provenance'):
             collector.validate_static_nuget_notices(report,self.out,static)
+
+
+class AlpineDistfilesBranchChecks(unittest.TestCase):
+    """Execute the actual shell selector; no package-specific source bypass."""
+    def select(self, release):
+        shell = str(Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'Git/bin/bash.exe') if os.name == 'nt' else shutil.which('sh')
+        if not shell or not Path(shell).is_file():
+            self.fail('A POSIX shell is required to execute source branch checks.')
+        helper = collector.ALPINE_FETCH
+        function = helper[helper.index('distfiles_branch_for_release() {'):helper.index('\ndistfiles_branch=$(')]
+        # Feed literal fixtures through stdin so Windows command-line argument
+        # conversion cannot split a malformed multi-line release before bash.
+        program = 'set -eu\n'+function+'\ndistfiles_branch_for_release '+shlex.quote(release)+'\n'
+        return subprocess.run([shell, '-s'], input=program, capture_output=True, text=True, check=False)
+
+    def test_stable_runtime_selects_its_own_major_minor_branch(self):
+        for release, expected in [('3.24.1', 'v3.24'), ('3.23.0', 'v3.23'), ('3.24.0_rc1', 'v3.24')]:
+            with self.subTest(release=release):
+                result = self.select(release)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, expected+'\n')
+
+    def test_only_actual_edge_or_alpha_runtime_selects_edge(self):
+        for release in ['edge', '3.25.0_alpha20261021']:
+            with self.subTest(release=release):
+                result = self.select(release)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, 'edge\n')
+
+    def test_unknown_or_malformed_release_fails_without_default_branch(self):
+        for release in ['', 'latest', 'v3.24', '3.24', '3.24.1/untrusted', '3.24.1\nedge', '3.24.0_alpha']:
+            with self.subTest(release=release):
+                result = self.select(release)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, '')
+                self.assertIn('Unrecognized actual Alpine release', result.stderr)
 
 
 class AlpineRecipeProviderChecks(unittest.TestCase):
