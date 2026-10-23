@@ -2,7 +2,7 @@ name: Interactive preview
 on:
   push:
     branches: [master]
-    paths: ['design/**', 'scripts/release/build-pages.py', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES', '.github/workflows/pages.yml']
+    paths: ['design/**', 'scripts/release/build-pages.py', 'tests/preview.mjs', 'tests/serve-preview.mjs', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES', '.github/workflows/pages.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -18,6 +18,26 @@ jobs:
         with:
           python-version: '3.12'
       - run: python scripts/release/build-pages.py --output-dir _site
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated preview test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/preview-tools" --no-save playwright@1.56.1
+          npx --prefix "$RUNNER_TEMP/preview-tools" playwright install --with-deps chromium
+      - name: Verify the exact Pages artifact in Chromium
+        env:
+          LOVECLOUD_PLAYWRIGHT_ROOT: ${{ runner.temp }}/preview-tools
+        run: |
+          node tests/serve-preview.mjs _site 33210 &
+          preview_pid=$!
+          trap 'kill "$preview_pid"' EXIT
+          node tests/preview.mjs --url http://127.0.0.1:33210/LoveCloud/ --report preview-verification.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview-verification
+          path: preview-verification.json
+          if-no-files-found: error
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

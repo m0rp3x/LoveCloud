@@ -24,7 +24,7 @@ function notices(directory) {
     if (entry.isSymbolicLink()) continue;
     if (entry.isDirectory()) {if(entry.name!=='node_modules')notices(file);continue;}
     if (!entry.isFile()) continue;
-    if (/^(licen[cs]e|copying|notice|copyright|third[-_]?party)|\.LICENSE(?:\.txt)?$/i.test(entry.name))copy(file,path.relative(source,file));
+    if (/^(licen[cs]e|copying|notice|copyright|third[-_]?party)|\.(?:LICENSE|LEGAL)(?:\.txt)?$/i.test(entry.name))copy(file,path.relative(source,file));
   }
 }
 function visit(directory) {

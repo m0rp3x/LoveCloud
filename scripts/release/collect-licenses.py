@@ -21,7 +21,7 @@ from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[2]
 NATIVE_UNUSED = re.compile(r'(^|/)(sharp|@img)(/|$)|libvips[^/]*\.(?:so|dylib)', re.I)
-LICENSE_NAME = re.compile(r'^(licen[cs]e|copying|notice|copyright|third[-_]?party)[^/]*$|\.LICENSE(?:\.txt)?$', re.I)
+LICENSE_NAME = re.compile(r'^(licen[cs]e|copying|notice|copyright|third[-_]?party)[^/]*$|\.(?:LICENSE|LEGAL)(?:\.txt)?$', re.I)
 
 
 def run(*args, **kwargs):
