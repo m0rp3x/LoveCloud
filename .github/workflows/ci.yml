@@ -78,6 +78,10 @@ jobs:
         if: ${{ !cancelled() }}
         timeout-minutes: 12
         run: python3 tests/os-source-probe.py --probe alpine --alpine-package apk-tools --report "${{ runner.temp }}/apk-tools-source-probe.json"
+      - name: Actual nss_wrapper stable source mirror regression (isolated immutable PostgreSQL)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 12
+        run: python3 tests/os-source-probe.py --probe alpine --alpine-package nss_wrapper --report "${{ runner.temp }}/nss-wrapper-source-probe.json"
       - name: Actual nginx vendor source and notice probe (isolated immutable gateway)
         if: ${{ !cancelled() }}
         timeout-minutes: 20
@@ -94,6 +98,7 @@ jobs:
             ${{ runner.temp }}/alpine-source-probe.json
             ${{ runner.temp }}/apk-tools-source-probe.json
             ${{ runner.temp }}/nginx-vendor-source-probe.json
+            ${{ runner.temp }}/nss-wrapper-source-probe.json
       - name: JavaScript syntax and operational shell syntax
         run: |
           for file in tests/*.mjs scripts/release/*.mjs; do node --check "$file"; done

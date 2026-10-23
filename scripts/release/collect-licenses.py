@@ -465,6 +465,27 @@ def collect_nginx_vendor_sources(image, vendor_packages, target, image_licenses,
 ALPINE_FETCH = r'''set -eu
 apk add --no-cache alpine-sdk curl >/dev/null
 mkdir -p /output/recipes /output/distfiles
+distfiles_branch_for_release() {
+  # Stable runtime images can contain sources no longer mirrored by edge.
+  # Use the runtime's own branch; archive checksums still come from its exact
+  # immutable APKBUILD, never from the mirror's name or a newer package.
+  case "$1" in
+    *[!a-z0-9._]*) printf 'Unrecognized actual Alpine release: %s\n' "$1" >&2; return 1;;
+    edge) printf 'edge\n';;
+    *)
+      if printf '%s\n' "$1" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+_alpha[0-9]+$'; then
+        printf 'edge\n'
+      elif printf '%s\n' "$1" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(_rc[0-9]+)?$'; then
+        printf 'v%s\n' "$(printf '%s\n' "$1" | cut -d. -f1,2)"
+      else
+        printf 'Unrecognized actual Alpine release: %s\n' "$1" >&2
+        return 1
+      fi;;
+  esac
+}
+distfiles_branch=$(distfiles_branch_for_release "$(cat /etc/alpine-release)")
+distfiles_mirror="https://distfiles.alpinelinux.org/distfiles/$distfiles_branch"
+printf '%s\n' "$distfiles_mirror" > /output/distfiles-mirror.txt
 download_recipe_archive() {
   archive_url=$1
   # Both providers are public, exact-commit official repositories. Keep useful
@@ -492,7 +513,7 @@ acquire_recipe_directory() {
   cp -a "$(dirname "$build")/." "/output/recipes/$origin/" || exit 1
   # Explicit failure is necessary: this function is called from an if clause,
   # where POSIX shells suppress implicit set -e handling inside functions.
-  (cd "/output/recipes/$origin" && SRCDEST=/output/distfiles DISTFILES_MIRROR=https://distfiles.alpinelinux.org/distfiles/edge abuild -F fetch && SRCDEST=/output/distfiles abuild -F verify) || exit 1
+  (cd "/output/recipes/$origin" && SRCDEST=/output/distfiles DISTFILES_MIRROR="$distfiles_mirror" abuild -F fetch && SRCDEST=/output/distfiles abuild -F verify) || exit 1
   printf '%s\n' "$archive_url" > "/output/recipes/$origin/recipe-url.txt"
 }
 while IFS='|' read -r origin version commit; do
