@@ -214,6 +214,10 @@ def main():
             result=acquire(collector,args.image,output,package['version'],role,{'distribution':'alpine','osPackages':[package]})
             assert result['status']=='PASS'
             target=output/'os-sources'/role
+            mirror=(target/'distfiles-mirror.txt').read_text().strip()
+            assert re.fullmatch(r'https://distfiles\.alpinelinux\.org/distfiles/(?:edge|v[0-9]+\.[0-9]+)',mirror), 'Record the actual official Alpine source mirror branch.'
+            if args.alpine_package=='nss_wrapper':
+                assert mirror=='https://distfiles.alpinelinux.org/distfiles/v3.24', 'The pinned PostgreSQL source probe must use its reviewed stable branch, not edge/upstream fallback.'
             assert (target/'source-fetch-complete.txt').read_text()=='sources-verified\n'
             recipe=target/'recipes'/package['origin']/'APKBUILD'
             recipe_text=recipe.read_text()
@@ -228,7 +232,7 @@ def main():
                     with file.open('rb') as stream: digest=hashlib.file_digest(stream,'sha256').hexdigest()
                     artifacts.append({'name':file.name,'sha256':digest,'bytes':file.stat().st_size})
             assert artifacts, 'Actual abuild-fetched and checksum-verified distfiles required.'
-            report['checks'].append({'name':'actual Alpine '+args.alpine_package+' exact aports fetch and verify','status':'PASS','recipe':provenance.strip(),'recipeProvider':provider,'artifacts':artifacts})
+            report['checks'].append({'name':'actual Alpine '+args.alpine_package+' exact aports fetch and verify','status':'PASS','recipe':provenance.strip(),'recipeProvider':provider,'distfilesMirror':mirror,'artifacts':artifacts})
             print('PASS real Linux Docker Alpine probe: installed '+args.alpine_package+' exact version+aports commit, source recipe, abuild fetch/verify and completion marker.')
             return
         result = acquire(collector, args.image, output, VERSION, 'historical')
