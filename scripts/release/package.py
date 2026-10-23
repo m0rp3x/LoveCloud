@@ -75,7 +75,7 @@ def main():
         # Optional services must also use immutable image references in the bundle.
         for name, service in [('compose.https.yaml', 'caddy'), ('compose.tailnet.yaml', 'tailscale')]:
             payload[name] = re.sub(rb'image: \$\{[^\n]+\}', ('image: ' + lock['images'][service]['reference']).encode(), payload[name], count=1)
-        payload['INSTALL.txt'] = ('LoveCloud v' + version + '\nLinux amd64. Requires Docker + Compose v2; shell needs openssl.\nLinux: sh scripts/init.sh --start\nWindows with Docker Desktop Linux containers: ./scripts/init.ps1 -Start\nOne-time setup link contains a private secret. Keep it private.\nFull instructions: docs/INSTALL.md and docs/OPERATIONS.md\n').encode()
+        payload['INSTALL.txt'] = ('LoveCloud v' + version + '\nLinux amd64. Requires Docker + Compose >=2.24.4; shell needs openssl.\nPOSIX shell: sh scripts/init.sh --start\nPowerShell7: ./scripts/init.ps1 -Start\nPowerShell7 on Linux is tested; Windows Docker Desktop is not release-validated.\nOne-time setup link contains a private secret. Keep it private.\nFull instructions: docs/INSTALL.md and docs/OPERATIONS.md\n').encode()
         prefix = f'lovecloud-v{version}'
         stamp = int(subprocess.check_output(['git', 'show', '-s', '--format=%ct', a.source_sha], cwd=ROOT, text=True))
         raw_tar = io.BytesIO()
@@ -94,7 +94,19 @@ def main():
         with (out / (prefix + '-install.tar.gz')).open('wb') as target:
             with gzip.GzipFile(fileobj=target, mode='wb', filename='', mtime=0) as gz:
                 gz.write(raw_tar.getvalue())
+        # Open both finished containers, not just their in-memory input.
+        with tarfile.open(out / (prefix + '-install.tar.gz'), 'r:gz') as tar, zipfile.ZipFile(out / (prefix + '-install.zip')) as z:
+            expected = {prefix + '/' + name: data for name, data in payload.items()}
+            if {m.name for m in tar.getmembers()} != set(expected) or set(z.namelist()) != set(expected):
+                raise RuntimeError('Finished archive inventory mismatch')
+            for name, data in expected.items():
+                if tar.extractfile(name).read() != data or z.read(name) != data:
+                    raise RuntimeError('Finished archive content mismatch: ' + name)
         subprocess.run(['git', 'archive', '--format=tar.gz', '--prefix=' + prefix + '-source/', '--output=' + str(out / (prefix + '-source.tar.gz')), a.source_sha], cwd=ROOT, check=True)
+        with tarfile.open(out / (prefix + '-source.tar.gz'), 'r:gz') as source:
+            if source.pax_headers.get('comment') != a.source_sha:
+                raise RuntimeError('Source archive does not identify the exact release commit')
+        (out / (prefix + '-release-notes.md')).write_bytes(payload['docs/releases/v' + version + '.md'])
         manifest = {'version': version, 'repository': 'https://github.com/m0rp3x/LoveCloud', 'sourceSha': a.source_sha,
                     'workflowRun': a.run_url, 'platforms': ['linux/amd64'], 'images': lock['images'],
                     'upgradeBaseline': BASELINE, 'checks': [{'name': 'candidate acceptance', 'status': 'NOT RUN', 'detail': 'Awaiting final artifact verification'}]}
@@ -108,6 +120,8 @@ def main():
         if any(c['status'] not in ['PASS', 'FAIL', 'NOT RUN'] for c in result['checks']):
             raise RuntimeError('Invalid verification status')
         manifest['checks'] = result['checks']
+        if result.get('baselineImages'):
+            manifest['baselineImages'] = result['baselineImages']
     if a.anonymous_pull_verified:
         if not a.finalize:
             raise RuntimeError('Anonymous pull is a post-acceptance publication check')

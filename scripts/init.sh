@@ -50,6 +50,9 @@ if [ -z "$files" ]; then
   [ ! -f compose.images.yaml ] || files="$files:compose.images.yaml"
   if [ "$secure" = true ] && [ -n "$(get_setting LOVE_CLOUD_DOMAIN)" ]; then files="$files:compose.https.yaml"; fi
 fi
+if [ "$source_build" -eq 0 ] && [ -f compose.images.yaml ]; then
+  case ":$files:" in *:compose.images.yaml:*) ;; *) files="$files:compose.images.yaml" ;; esac
+fi
 if [ "$source_build" -eq 1 ]; then
   [ -d backend ] && [ -d frontend ] || { printf '%s\n' 'Source build requires a source checkout, not an installation archive.' >&2; exit 2; }
   case ":$files:" in *:compose.dev.yaml:*) ;; *) files="$files:compose.dev.yaml" ;; esac
@@ -61,9 +64,12 @@ for compose_file in $files; do
   set -- "$@" -f "$compose_file"
 done
 set +f; IFS=$old_ifs
+[ -f .env ] || : > .env
 if [ "$start" -eq 1 ]; then
   command -v docker >/dev/null || { printf '%s\n' 'Install Docker Engine/Desktop and Docker Compose v2 first.' >&2; exit 1; }
   docker compose version >/dev/null
+  compose_version=$(docker compose version --short | sed 's/^v//;s/[-+].*//')
+  if [ -n "$compose_version" ] && ! printf '%s\n' "$compose_version" | awk -F. '{exit !($1>2 || ($1==2 && ($2>24 || ($2==24 && $3>=4))))}'; then printf '%s\n' 'Docker Compose >=2.24.4 is required. Update the Compose plugin.' >&2; exit 1; fi
   docker info >/dev/null 2>&1 || { printf '%s\n' 'Docker unavailable. Start Docker and check permissions (docker info).' >&2; exit 1; }
 fi
 existing=0
@@ -72,6 +78,19 @@ for secret in database_password database_connection bootstrap_password setup_tok
 if command -v docker >/dev/null 2>&1; then
   existing_volumes=$(docker volume ls -q --filter "label=com.docker.compose.project=$project" 2>/dev/null || true)
   [ -z "$existing_volumes" ] || existing=1
+  # Also catch externally named/unlabelled volumes selected by an override.
+  # Only nonsecret resource names are extracted; never source/eval configuration.
+  effective_config=$(docker "$@" config --format json 2>/dev/null || true)
+  volume_names=$(printf '%s\n' "$effective_config" | sed -n 's/^[[:space:]]*"name":[[:space:]]*"\([^"]*\)".*/\1/p')
+  for volume_name in $volume_names; do
+    found=$(docker volume inspect "$volume_name" --format '{{.Name}}' 2>/dev/null || true)
+    [ -z "$found" ] || existing=1
+  done
+  existing_db=$(docker ps -aq --filter "label=com.docker.compose.project=$project" --filter label=com.docker.compose.service=db 2>/dev/null || true)
+  if [ -n "$existing_db" ]; then
+    pg_major=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$existing_db" 2>/dev/null | sed -n 's/^PG_MAJOR=//p' | head -n 1)
+    if [ "$pg_major" != 18 ]; then printf '%s\n' 'Existing database is not verified PostgreSQL18. Stop and plan a PostgreSQL migration; the installer will not change its major version.' >&2; exit 1; fi
+  fi
 fi
 if [ "$existing" -eq 1 ]; then
   missing=''
@@ -115,6 +134,12 @@ configured=0
 if [ "$start" -eq 1 ]; then
   APP_ORIGIN=$public_origin SECURE_COOKIES=$secure COMPOSE_PROJECT_NAME=$project COMPOSE_FILE=$files COMPOSE_PATH_SEPARATOR=:
   export APP_ORIGIN SECURE_COOKIES COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_PATH_SEPARATOR
+  if [ "$source_build" -eq 0 ]; then
+    effective_config=$(docker "$@" config --format json)
+    if printf '%s' "$effective_config" | grep -Eq '"build"[[:space:]]*:'; then
+      printf '%s\n' 'Production configuration contains build sections. Remove development overrides, or explicitly use --build from a source checkout.' >&2; exit 1
+    fi
+  fi
   if [ "$source_build" -eq 1 ]; then docker "$@" build; else docker "$@" pull; fi
   if ! docker "$@" up -d --no-build; then printf '%s\n' 'Startup failed. Inspect docker compose ps and docker compose logs --tail=100 (keep logs private).' >&2; exit 1; fi
   ready=0; attempt=0

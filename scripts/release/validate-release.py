@@ -19,6 +19,18 @@ def main():
     if manifest['version'] != pathlib.Path('VERSION').read_text().strip():
         raise RuntimeError('Release/VERSION mismatch')
     checks = manifest['checks']
+    required = {
+        'install archive allowlist', 'shell installation from archive',
+        'initial setup, avatars, access and restart', 'private images and removed optimizer',
+        'PowerShell installation from archive', 'backend core, native avatars and setup races',
+        'baseline synthetic functional data', 'consistent encrypted backup',
+        'restore isolated project and originals', 'PowerShell encrypted backup and restore',
+        'update same project and custom volumes', 'candidate recreation persistence',
+        'frontend lockfile, typecheck and production build', 'backend locked restore and Release build',
+        'actual runtime SBOM, license notices and corresponding sources',
+    }
+    if not required.issubset({c['name'] for c in checks}):
+        raise RuntimeError('Mandatory acceptance checks are missing from the manifest')
     if not checks or any(c['status'] != 'PASS' for c in checks if c.get('required', True)):
         raise RuntimeError('Every mandatory check must be PASS before publishing')
     for artifact in manifest['artifacts']:

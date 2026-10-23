@@ -68,6 +68,8 @@ jobs:
           npm run build --prefix frontend
           dotnet restore backend/LoveCloud.Api.csproj --locked-mode
           dotnet build backend/LoveCloud.Api.csproj -c Release --no-restore
+          sh tests/installers.sh
+          pwsh -NoProfile -File tests/installers.ps1
       - name: Registry login with repository-scoped GITHUB_TOKEN
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -173,6 +175,7 @@ jobs:
             .artifacts/release-public/lovecloud-v*-install.zip
             .artifacts/release-public/lovecloud-v*-source.tar.gz
             .artifacts/release-public/lovecloud-v*-third-party-licenses.tar.gz
+            .artifacts/release-public/lovecloud-v*-release-notes.md
             .artifacts/release-public/api.spdx.json
             .artifacts/release-public/frontend.spdx.json
             .artifacts/release-public/build-inputs.json

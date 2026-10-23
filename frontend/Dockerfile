@@ -8,9 +8,11 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=1536
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY frontend/ .
+COPY scripts/release/collect-npm-licenses.mjs /tools/collect-npm-licenses.mjs
 RUN npm run build && \
     rm -rf /app/.next/standalone/node_modules/sharp /app/.next/standalone/node_modules/@img && \
-    test -z "$(find /app/.next/standalone -name '*vips*' -o -path '*/node_modules/sharp')"
+    test -z "$(find /app/.next/standalone -name '*vips*' -o -path '*/node_modules/sharp')" && \
+    node /tools/collect-npm-licenses.mjs --root /app/.next/standalone/node_modules --source /app/node_modules --output /licenses-npm
 FROM ${NODE_IMAGE} AS runtime
 ARG VERSION=0.1.0
 ARG REVISION=development
@@ -28,6 +30,7 @@ COPY --from=build --chown=nextjs:nodejs /app/public ./public
 # Optional optimizer packages were pruned BEFORE COPY, so no final layer ships them.
 COPY LICENSE NOTICE THIRD_PARTY_NOTICES /usr/share/licenses/lovecloud/
 COPY licenses/ /usr/share/licenses/lovecloud/licenses/
+COPY --from=build /licenses-npm/ /usr/share/licenses/lovecloud/npm/
 USER nextjs
 EXPOSE 3000
 CMD ["node","server.js"]

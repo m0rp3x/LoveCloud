@@ -64,6 +64,7 @@ if (-not $ComposeFile.Count) {
         if ($secure -eq 'true' -and (Get-InstallSetting 'LOVE_CLOUD_DOMAIN')) {$ComposeFile+='compose.https.yaml'}
     }
 }
+if (-not $Build -and (Test-Path -LiteralPath (Join-Path $workspacePath 'compose.images.yaml')) -and 'compose.images.yaml' -notin $ComposeFile) {$ComposeFile+='compose.images.yaml'}
 if ($Build) {
     if (-not (Test-Path (Join-Path $workspacePath 'backend')) -or -not (Test-Path (Join-Path $workspacePath 'frontend'))) {throw 'Source build requires a source checkout, not an installation archive.'}
     if ('compose.dev.yaml' -notin $ComposeFile) {$ComposeFile+='compose.dev.yaml'}
@@ -72,9 +73,14 @@ foreach ($file in $ComposeFile) {if (-not (Test-Path -LiteralPath (Join-Path $wo
 Push-Location $workspacePath
 $previousEnvironment=@{}
 try {
+    if (-not (Test-Path -LiteralPath $envPath)) {[IO.File]::WriteAllText($envPath,'',$utf8)}
+    $argsList=@('compose','--project-name',$ProjectName,'--env-file','.env')
+    foreach ($file in $ComposeFile) {$argsList+=@('-f',$file)}
     if ($Start) {
         if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {throw 'Install Docker Engine/Desktop and Docker Compose v2 first.'}
         Invoke-Docker @('compose','version')
+        $composeVersion=& docker compose version --short
+        if ($LASTEXITCODE -ne 0 -or ($composeVersion -and ($composeVersion -notmatch '^v?(\d+\.\d+\.\d+)' -or [version]$Matches[1] -lt [version]'2.24.4'))) {throw 'Docker Compose >=2.24.4 is required. Update the Compose plugin.'}
         & docker info *> $null
         if ($LASTEXITCODE -ne 0) {throw 'Docker unavailable. Start Docker and check permissions (docker info).'}
     }
@@ -84,6 +90,21 @@ try {
     if (Get-Command docker -ErrorAction SilentlyContinue) {
         $volumes=& docker volume ls -q --filter "label=com.docker.compose.project=$ProjectName" 2>$null
         if ($LASTEXITCODE -eq 0 -and $volumes) {$existing=$true}
+        $rawConfig=& docker @argsList config --format json 2>$null
+        if ($LASTEXITCODE -eq 0 -and $rawConfig) {
+            $config=$rawConfig | ConvertFrom-Json
+            foreach ($volume in $config.volumes.PSObject.Properties.Value) {
+                if ($volume.name) {
+                    $found=& docker volume inspect $volume.name --format '{{.Name}}' 2>$null
+                    if ($LASTEXITCODE -eq 0 -and $found) {$existing=$true}
+                }
+            }
+        }
+        $existingDb=& docker ps -aq --filter "label=com.docker.compose.project=$ProjectName" --filter label=com.docker.compose.service=db 2>$null
+        if ($LASTEXITCODE -eq 0 -and $existingDb) {
+            $dbEnvironment=& docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' $existingDb
+            if ($LASTEXITCODE -ne 0 -or 'PG_MAJOR=18' -notin $dbEnvironment) {throw 'Existing database is not verified PostgreSQL18. Stop and plan a PostgreSQL migration; the installer will not change its major version.'}
+        }
     }
     if ($existing) {
         $missing=@($required | Where-Object { -not ($_ -eq 'setup_token' -and $ResetSetupToken) -and (-not (Test-Path -LiteralPath (Join-Path $secretDirectory $_)) -or (Get-Item -LiteralPath (Join-Path $secretDirectory $_)).Length -eq 0) })
@@ -124,8 +145,14 @@ try {
     [IO.File]::WriteAllText($linkPath,$setupLink+[Environment]::NewLine,$utf8)
     $configured=$false
     if ($Start) {
-        $argsList=@('compose','--project-name',$ProjectName,'--env-file','.env')
-        foreach ($file in $ComposeFile) {$argsList+=@('-f',$file)}
+        if (-not $Build) {
+            $rawConfig=& docker @argsList config --format json
+            if ($LASTEXITCODE -ne 0) {throw 'Cannot validate production Compose configuration.'}
+            if ($rawConfig) {
+                $config=$rawConfig | ConvertFrom-Json
+                foreach ($service in $config.services.PSObject.Properties.Value) {if ('build' -in $service.PSObject.Properties.Name) {throw 'Production configuration contains build sections. Remove development overrides, or explicitly use -Build from a source checkout.'}}
+            }
+        }
         if ($Build) {Invoke-Docker ($argsList+@('build'))} else {Invoke-Docker ($argsList+@('pull'))}
         Invoke-Docker ($argsList+@('up','-d','--no-build'))
         $ready=$false
