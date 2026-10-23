@@ -40,7 +40,7 @@ def verify_nginx_vendor_payload(target, result, selected, catalog):
     for key in ['status','imageDigest','catalogSha256','packages','sources','licenses','mappings']:
         assert recorded[key]==result[key], 'Retained vendor provenance must match returned evidence: '+key
     expected={(package['name'],package['version']) for package in selected}
-    assert {(item['package'],item['version']) for item in result['mappings']}==expected, 'Every actual vendor APK needs an explicit component mapping.'
+    assert {(item['name'],item['version']) for item in result['mappings']}==expected, 'Every actual vendor APK needs an explicit component mapping.'
     assert all(item['components'] for item in result['mappings']), 'Vendor component mappings must be nonempty.'
 
     def file_for(entry):
