@@ -25,12 +25,12 @@ foreach($settings in @((Join-Path $PSScriptRoot '../.env'),(Join-Path $PSScriptR
     }
 }
 if(-not $backupImage){$backupImage='restic/restic:0.18.0'}
-function Docker([string[]]$Arguments){
+function Invoke-LoveCloudDocker([string[]]$Arguments){
     $output=& docker @Arguments
     if($LASTEXITCODE -ne 0){throw ('Docker operation failed: '+$Arguments[0]+'. Inspect sanitized logs before reporting.')}
     return $output
 }
-if(Docker @('ps','-aq','--filter',"label=com.docker.compose.project=$ProjectName")){throw 'Restore project already has containers; choose a fresh name.'}
+if(Invoke-LoveCloudDocker @('ps','-aq','--filter',"label=com.docker.compose.project=$ProjectName")){throw 'Restore project already has containers; choose a fresh name.'}
 foreach($name in @('pgdata','files','keys','tls_data','tls_config','tailnet_state')){
     & docker volume inspect "${ProjectName}_restore_$name" *> $null
     if($LASTEXITCODE -eq 0){throw 'Restore volume already exists; choose a fresh project.'}
@@ -44,7 +44,7 @@ else{& chmod 700 $stage}
 Push-Location $Target
 $previousEnvironment=@{}
 try {
-    Docker @('run','--rm','--mount',"type=bind,source=$Repository,target=/repository",'--mount',"type=bind,source=$PasswordFile,target=/password,readonly",'--mount',"type=bind,source=$stage,target=/restore",$backupImage,'--repo','/repository','--password-file','/password','restore',$Snapshot,'--target','/restore')
+    Invoke-LoveCloudDocker @('run','--rm','--mount',"type=bind,source=$Repository,target=/repository",'--mount',"type=bind,source=$PasswordFile,target=/password,readonly",'--mount',"type=bind,source=$stage,target=/restore",$backupImage,'--repo','/repository','--password-file','/password','restore',$Snapshot,'--target','/restore')
     if(-not (Test-Path -LiteralPath "$stage/source/database/database.dump")){throw 'Snapshot has no LoveCloud database.'}
     $services=@(Get-Content -LiteralPath "$stage/source/install/backup-services.txt")
     foreach($service in $services){if($service -notin @('db','api','frontend','gateway','caddy','tailscale','')){throw 'Snapshot includes an unsupported additional service; prepare a reviewed manual restore before starting containers.'}}
@@ -117,22 +117,22 @@ networks: !override
     [IO.File]::WriteAllLines((Join-Path $Target '.env'),$lines,[Text.UTF8Encoding]::new($false))
     $effective=@{COMPOSE_PROJECT_NAME=$ProjectName;COMPOSE_FILE=((@($files)+@('compose.restore.yaml')) -join $separator);COMPOSE_PATH_SEPARATOR=$separator;APP_ORIGIN=$Origin;SECURE_COOKIES=($originUri.Scheme -eq 'https').ToString().ToLowerInvariant();LOVE_CLOUD_PORT="$Port";LOVE_CLOUD_BIND='127.0.0.1';COMPOSE_PROFILES=''}
     foreach($name in $effective.Keys){$previousEnvironment[$name]=[Environment]::GetEnvironmentVariable($name);[Environment]::SetEnvironmentVariable($name,$effective[$name])}
-    Docker @('compose','config','--quiet') | Out-Null
-    Docker @('compose','up','-d','--no-build','db') | Out-Null
-    $db=(Docker @('compose','ps','-q','db') | Out-String).Trim()
+    Invoke-LoveCloudDocker @('compose','config','--quiet') | Out-Null
+    Invoke-LoveCloudDocker @('compose','up','-d','--no-build','db') | Out-Null
+    $db=(Invoke-LoveCloudDocker @('compose','ps','-q','db') | Out-String).Trim()
     $ready=$false
     for($attempt=0;$attempt -lt 90;$attempt++){
         & docker exec $db pg_isready -U lovecloud -d lovecloud *> $null
         if($LASTEXITCODE -eq 0){$ready=$true;break};Start-Sleep -Seconds 1
     }
     if(-not $ready){throw 'Restored database readiness failed.'}
-    Docker @('cp',"$stage/source/database/database.dump","${db}:/tmp/lovecloud-restore.dump") | Out-Null
-    Docker @('exec',$db,'pg_restore','-U','lovecloud','-d','lovecloud','--clean','--if-exists','--no-owner','--exit-on-error','/tmp/lovecloud-restore.dump') | Out-Null
-    Docker @('exec',$db,'rm','-f','/tmp/lovecloud-restore.dump') | Out-Null
-    Docker @('compose','create','--no-build','api') | Out-Null
-    $api=(Docker @('compose','ps','-aq','api') | Out-String).Trim()
-    Docker @('run','--rm','--volumes-from',$api,'--mount',"type=bind,source=$stage/data,target=/originals,readonly",'--entrypoint','sh',$backupImage,'-c','cp -a /originals/files/. /data/files/; cp -a /originals/keys/. /data/keys/') | Out-Null
-    Docker @('compose','up','-d','--no-build') | Out-Null
+    Invoke-LoveCloudDocker @('cp',"$stage/source/database/database.dump","${db}:/tmp/lovecloud-restore.dump") | Out-Null
+    Invoke-LoveCloudDocker @('exec',$db,'pg_restore','-U','lovecloud','-d','lovecloud','--clean','--if-exists','--no-owner','--exit-on-error','/tmp/lovecloud-restore.dump') | Out-Null
+    Invoke-LoveCloudDocker @('exec',$db,'rm','-f','/tmp/lovecloud-restore.dump') | Out-Null
+    Invoke-LoveCloudDocker @('compose','create','--no-build','api') | Out-Null
+    $api=(Invoke-LoveCloudDocker @('compose','ps','-aq','api') | Out-String).Trim()
+    Invoke-LoveCloudDocker @('run','--rm','--volumes-from',$api,'--mount',"type=bind,source=$stage/data,target=/originals,readonly",'--entrypoint','sh',$backupImage,'-c','cp -a /originals/files/. /data/files/; cp -a /originals/keys/. /data/keys/') | Out-Null
+    Invoke-LoveCloudDocker @('compose','up','-d','--no-build') | Out-Null
     $ready=$false
     for($attempt=0;$attempt -lt 90;$attempt++){
         & docker compose exec -T gateway wget -qO- http://127.0.0.1/health *> $null
@@ -151,7 +151,7 @@ networks: !override
         else {
             # Linux snapshot metadata may be UID1654. This helper is mounted
             # solely to the just-created, verified staging directory.
-            Docker @('run','--rm','--mount',"type=bind,source=$resolved,target=/restore",'--entrypoint','sh',$backupImage,'-c','rm -rf /restore/* /restore/.[!.]* /restore/..?*') | Out-Null
+            Invoke-LoveCloudDocker @('run','--rm','--mount',"type=bind,source=$resolved,target=/restore",'--entrypoint','sh',$backupImage,'-c','rm -rf /restore/* /restore/.[!.]* /restore/..?*') | Out-Null
             Remove-Item -LiteralPath $resolved -Force
         }
     }

@@ -60,6 +60,9 @@ jobs:
       - name: PowerShell installer fixtures
         shell: pwsh
         run: ./tests/installers.ps1
+      - name: PowerShell operational native dispatch regression
+        shell: pwsh
+        run: ./tests/operations-dispatch.ps1
       - name: License collector regressions (offline mocked executor)
         run: python3 tests/test_license_collector.py
       - name: JavaScript syntax and operational shell syntax
@@ -77,4 +80,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: PowerShell real Windows filesystem and configuration fixtures
         shell: pwsh
-        run: ./tests/installers.ps1
+        run: |
+          ./tests/installers.ps1
+          ./tests/operations-dispatch.ps1

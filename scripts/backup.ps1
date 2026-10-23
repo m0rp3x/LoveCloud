@@ -7,14 +7,14 @@ $stageRoot=Join-Path $root '.artifacts'
 $stagePath=Join-Path $stageRoot ('backup-'+[guid]::NewGuid().ToString('N'))
 $passwordPath=Join-Path $root '.secrets/backup_password'
 $lock=$null; $stopped=$false
-function Docker([string[]]$Arguments) {
+function Invoke-LoveCloudDocker([string[]]$Arguments) {
     $output=& docker @Arguments
     if($LASTEXITCODE -ne 0){throw ('Docker operation failed: '+$Arguments[0]+'. Inspect docker compose logs --tail 100; do not publish secrets.')}
     return $output
 }
 function Compose([string[]]$Arguments){
     $composeArgs=@('compose');if($ProjectName){$composeArgs+=@('-p',$ProjectName)}
-    Docker ($composeArgs+$Arguments)
+    Invoke-LoveCloudDocker ($composeArgs+$Arguments)
 }
 Push-Location $root
 try {
@@ -25,7 +25,7 @@ try {
     $lock=[IO.File]::Open((Join-Path $stageRoot 'backup.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
     $api=(Compose @('ps','-q','api') | Out-String).Trim();$db=(Compose @('ps','-q','db') | Out-String).Trim()
     if(-not $api -or -not $db){throw 'The existing API and database must be running.'}
-    $info=(Docker @('inspect',$api) | Out-String | ConvertFrom-Json)[0]
+    $info=(Invoke-LoveCloudDocker @('inspect',$api) | Out-String | ConvertFrom-Json)[0]
     $actualProject=$info.Config.Labels.'com.docker.compose.project'
     $backupImage=$env:LOVECLOUD_BACKUP_IMAGE
     if(-not $backupImage -and (Test-Path .env)){
@@ -33,7 +33,7 @@ try {
         if($match){$backupImage=($match -split '=',2)[1].Trim('"',"'")}
     }
     if(-not $backupImage){$backupImage='restic/restic:0.18.0'}
-    Docker @('pull',$backupImage) | Out-Null
+    Invoke-LoveCloudDocker @('pull',$backupImage) | Out-Null
     if(-not (Test-Path -LiteralPath $passwordPath)){
         if(Test-Path -LiteralPath (Join-Path $repositoryPath 'config')){throw 'Existing encrypted repository has no backup_password. Restore the key; refusing to replace it.'}
         $bytes=[Security.Cryptography.RandomNumberGenerator]::GetBytes(48)
@@ -62,16 +62,16 @@ try {
     [IO.File]::WriteAllText("$stagePath/install/backup-project.txt",$actualProject,[Text.UTF8Encoding]::new($false))
     Compose @('config','--format','json') | Set-Content "$stagePath/install/backup-effective-compose.json"
     Compose @('config','--services') | Set-Content "$stagePath/install/backup-services.txt"
-    Docker @('inspect','--format','{{json .Mounts}}',$api) | Set-Content "$stagePath/install/backup-api-mounts.json"
-    Docker @('inspect','--format','{{json .Mounts}}',$db) | Set-Content "$stagePath/install/backup-db-mounts.json"
+    Invoke-LoveCloudDocker @('inspect','--format','{{json .Mounts}}',$api) | Set-Content "$stagePath/install/backup-api-mounts.json"
+    Invoke-LoveCloudDocker @('inspect','--format','{{json .Mounts}}',$db) | Set-Content "$stagePath/install/backup-db-mounts.json"
     Compose @('stop','api') | Out-Null;$stopped=$true
-    Docker @('exec',$db,'pg_dump','-U','lovecloud','-d','lovecloud','-Fc','-f','/tmp/lovecloud-backup.dump') | Out-Null
-    Docker @('cp',"${db}:/tmp/lovecloud-backup.dump","$stagePath/database/database.dump") | Out-Null
-    Docker @('exec',$db,'rm','-f','/tmp/lovecloud-backup.dump') | Out-Null
+    Invoke-LoveCloudDocker @('exec',$db,'pg_dump','-U','lovecloud','-d','lovecloud','-Fc','-f','/tmp/lovecloud-backup.dump') | Out-Null
+    Invoke-LoveCloudDocker @('cp',"${db}:/tmp/lovecloud-backup.dump","$stagePath/database/database.dump") | Out-Null
+    Invoke-LoveCloudDocker @('exec',$db,'rm','-f','/tmp/lovecloud-backup.dump') | Out-Null
     $restic=@('run','--rm','--volumes-from',"${api}:ro",'--mount',"type=bind,source=$repositoryPath,target=/repository",'--mount',"type=bind,source=$passwordPath,target=/password,readonly",'--mount',"type=bind,source=$stagePath,target=/source,readonly",$backupImage,'--repo','/repository','--password-file','/password')
-    if(-not (Test-Path -LiteralPath "$repositoryPath/config")){Docker ($restic+@('init'))}
-    Docker ($restic+@('backup','--tag',$actualProject,'/source','/data/files','/data/keys'))
-    Docker ($restic+@('check'))
+    if(-not (Test-Path -LiteralPath "$repositoryPath/config")){Invoke-LoveCloudDocker ($restic+@('init'))}
+    Invoke-LoveCloudDocker ($restic+@('backup','--tag',$actualProject,'/source','/data/files','/data/keys'))
+    Invoke-LoveCloudDocker ($restic+@('check'))
     Write-Host "Encrypted backup verified: $repositoryPath"
     Write-Host "Keep a separate safe copy of $passwordPath"
 } finally {
