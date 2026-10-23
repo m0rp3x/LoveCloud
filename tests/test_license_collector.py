@@ -1,5 +1,6 @@
 """Offline regression tests: mocked Docker execution is never a runtime claim."""
 import copy
+import hashlib
 import importlib.util
 import json
 import os
@@ -142,6 +143,54 @@ class LicenseCollectorChecks(unittest.TestCase):
         with patch.object(collector.subprocess, 'run', side_effect=lambda args, **kw: self.helper(args, **kw, dsc=False)):
             with self.assertRaisesRegex(RuntimeError, 'Missing acquired Debian source descriptors'):
                 self.collect(report, download=True)
+
+    def notice_fixture(self, static_text=None, indexed=True):
+        notice=(COLLECTOR.parents[2]/'licenses/Npgsql-LICENSE.txt').read_text(encoding='utf-8-sig')
+        package='Npgsql/10.0.3'
+        actual=self.out/'nuget'/collector.safe_name('Npgsql-10.0.3')
+        actual.mkdir(parents=True)
+        (actual/'upstream-LICENSE.txt').write_text(notice,encoding='utf-8')
+        (actual/'source.json').write_text(json.dumps({'notices':['upstream-LICENSE.txt']}))
+        static=self.out/'static-api-image-licenses'
+        static.mkdir()
+        text=notice if static_text is None else static_text
+        (static/'Npgsql-LICENSE.txt').write_text(text,encoding='utf-8')
+        index={'packages':{}}
+        if indexed:
+            index['packages'][package]={'file':'Npgsql-LICENSE.txt','sha256':hashlib.sha256(text.encode().replace(b'\r\n',b'\n')).hexdigest()}
+        (static/'nuget-license-index.json').write_text(json.dumps(index))
+        return {'nuget':[package]},static
+
+    def test_static_notice_requires_full_text_not_spdx_wrapper(self):
+        report,static=self.notice_fixture('SPDX-License-Identifier: PostgreSQL\n')
+        with self.assertRaisesRegex(RuntimeError,'copyright/license missing'):
+            collector.validate_static_nuget_notices(report,self.out,static)
+
+    def test_static_notice_missing_npgsql_copyright_fails(self):
+        notice=(COLLECTOR.parents[2]/'licenses/Npgsql-LICENSE.txt').read_text(encoding='utf-8-sig')
+        stripped='\n'.join(line for line in notice.splitlines() if 'Copyright' not in line)
+        report,static=self.notice_fixture(stripped)
+        with self.assertRaisesRegex(RuntimeError,'copyright/license missing'):
+            collector.validate_static_nuget_notices(report,self.out,static)
+
+    def test_static_notice_full_actual_text_and_exact_index_pass(self):
+        report,static=self.notice_fixture()
+        result=collector.validate_static_nuget_notices(report,self.out,static)
+        self.assertEqual(result['status'],'PASS')
+        self.assertEqual(result['checks'][0]['package'],'Npgsql/10.0.3')
+
+    def test_static_notice_tampering_fails_even_with_another_full_copy(self):
+        report,static=self.notice_fixture()
+        path=static/'Npgsql-LICENSE.txt'
+        (static/'aggregate-LICENSE.txt').write_bytes(path.read_bytes())
+        path.write_text('tampered fixture\n')
+        with self.assertRaisesRegex(RuntimeError,'provenance/hash mismatch'):
+            collector.validate_static_nuget_notices(report,self.out,static)
+
+    def test_exact_npgsql_version_without_reviewed_index_fails(self):
+        report,static=self.notice_fixture(indexed=False)
+        with self.assertRaisesRegex(RuntimeError,'Exact Npgsql version requires reviewed notice provenance'):
+            collector.validate_static_nuget_notices(report,self.out,static)
 
 
 if __name__ == '__main__':
