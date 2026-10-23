@@ -12,6 +12,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,7 +25,12 @@ jobs:
       - name: Install isolated preview test tools
         run: |
           npm install --prefix "$RUNNER_TEMP/preview-tools" --no-save playwright@1.56.1
-          npx --prefix "$RUNNER_TEMP/preview-tools" playwright install --with-deps chromium
+          # ubuntu-24.04 already supplies Chrome and its runtime libraries.
+          # Record and exercise that real browser; do not reinstall OS fonts.
+          chrome=$(command -v google-chrome || command -v chromium || true)
+          test -n "$chrome" || { echo 'Runner Chrome/Chromium is required for preview acceptance.' >&2; exit 1; }
+          "$chrome" --version
+          printf 'LOVECLOUD_CHROMIUM_PATH=%s\n' "$chrome" >> "$GITHUB_ENV"
       - name: Verify the exact Pages artifact in Chromium
         env:
           LOVECLOUD_PLAYWRIGHT_ROOT: ${{ runner.temp }}/preview-tools
@@ -57,6 +63,7 @@ jobs:
   verify-published:
     needs: deploy
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -65,7 +72,10 @@ jobs:
       - name: Install isolated browser verification tools
         run: |
           npm install --prefix "$RUNNER_TEMP/preview-tools" --no-save playwright@1.56.1
-          npx --prefix "$RUNNER_TEMP/preview-tools" playwright install --with-deps chromium
+          chrome=$(command -v google-chrome || command -v chromium || true)
+          test -n "$chrome" || { echo 'Runner Chrome/Chromium is required for preview acceptance.' >&2; exit 1; }
+          "$chrome" --version
+          printf 'LOVECLOUD_CHROMIUM_PATH=%s\n' "$chrome" >> "$GITHUB_ENV"
       - name: Verify the actual published preview
         env:
           LOVECLOUD_PLAYWRIGHT_ROOT: ${{ runner.temp }}/preview-tools

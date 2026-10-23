@@ -60,6 +60,8 @@ jobs:
       - name: PowerShell installer fixtures
         shell: pwsh
         run: ./tests/installers.ps1
+      - name: License collector regressions (offline mocked executor)
+        run: python3 tests/test_license_collector.py
       - name: JavaScript syntax and operational shell syntax
         run: |
           for file in tests/*.mjs scripts/release/*.mjs; do node --check "$file"; done

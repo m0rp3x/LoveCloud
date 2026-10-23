@@ -100,6 +100,9 @@ jobs:
           cp .artifacts/release-lock/image-lock.json .artifacts/release-public/image-lock.json
       - name: Runtime SBOM and corresponding licenses
         id: licensechecks
+        # Independent acceptance gates keep running to collect concrete failures.
+        # The final verdict still requires this exact step's outcome=success.
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -145,6 +148,8 @@ jobs:
       - name: Package exact commit into source and installation archives
         run: python3 scripts/release/package.py --source-sha "$GITHUB_SHA" --images .artifacts/release-lock/image-lock.json --output-dir .artifacts/release-public --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
       - name: Verify final archives, candidate images, setup races, backup and upgrade
+        id: runtimechecks
+        continue-on-error: true
         run: |
           bash scripts/release/verify-candidate.sh --archive ".artifacts/release-public/lovecloud-v$(cat VERSION)-install.tar.gz" --images .artifacts/release-lock/compose.images.yaml --source-sha "$GITHUB_SHA" --report .artifacts/release-public/verification.json --baseline-images .artifacts/baseline.images.yaml
       - name: Finalize immutable release manifest
@@ -185,6 +190,16 @@ jobs:
             .artifacts/release-public/verification.json
             .artifacts/release-public/release-manifest.json
             .artifacts/release-public/SHA256SUMS
+      - name: Require every mandatory candidate gate to succeed
+        if: always()
+        env:
+          LICENSE_OUTCOME: ${{ steps.licensechecks.outcome }}
+          RUNTIME_OUTCOME: ${{ steps.runtimechecks.outcome }}
+        run: |
+          set -euo pipefail
+          printf 'Licensing gate: %s\nRuntime/archive/data gate: %s\n' "$LICENSE_OUTCOME" "$RUNTIME_OUTCOME"
+          test "$LICENSE_OUTCOME" = success
+          test "$RUNTIME_OUTCOME" = success
   publish:
     if: inputs.phase == 'publish'
     runs-on: ubuntu-24.04

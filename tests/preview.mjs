@@ -10,7 +10,7 @@ const require=createRequire(resolve(process.env.LOVECLOUD_PLAYWRIGHT_ROOT||'.art
 const {chromium}=require('playwright');
 const launch={headless:true};if(process.env.LOVECLOUD_CHROMIUM_PATH)launch.executablePath=process.env.LOVECLOUD_CHROMIUM_PATH;
 const browser=await chromium.launch(launch),checks=[],requests=[],failures=[],errors=[];
-const result={sourceSha:process.env.GITHUB_SHA||null,url:url.href,checks};
+const result={sourceSha:process.env.GITHUB_SHA||null,url:url.href,browser:{engine:'chromium',version:browser.version()},checks};
 const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
 context.on('request',request=>{requests.push({url:request.url(),method:request.method()});if(new URL(request.url()).origin!==url.origin||request.method()!=='GET'||/\/api\/|\/hubs\//.test(request.url()))failures.push(request.url());});
 context.on('response',response=>{if(response.status()>=400)failures.push(response.status()+' '+response.url());});
