@@ -12,7 +12,7 @@ COPY scripts/release/collect-npm-licenses.mjs /tools/collect-npm-licenses.mjs
 RUN npm run build && \
     rm -rf /app/.next/standalone/node_modules/sharp /app/.next/standalone/node_modules/@img && \
     test -z "$(find /app/.next/standalone -name '*vips*' -o -path '*/node_modules/sharp')" && \
-    node /tools/collect-npm-licenses.mjs --root /app/.next/standalone/node_modules --source /app/node_modules --output /licenses-npm
+    node /tools/collect-npm-licenses.mjs --root /app/.next/standalone/node_modules --source /app/node_modules --output /licenses-npm --client-roots react,react-dom,swr,@microsoft/signalr,qrcode
 FROM ${NODE_IMAGE} AS runtime
 ARG VERSION=0.1.0
 ARG REVISION=development

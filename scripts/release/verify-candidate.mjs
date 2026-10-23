@@ -40,7 +40,12 @@ try{
   await check('shell installation from archive',()=>{const hashes=secretHashes(candidate);install(candidate,{project,port:33213,hostPath});assert.deepEqual(secretHashes(candidate),hashes);checkLocked(candidate,expected);checkRuntimePermissions(candidate);return 'Fresh start/rerun with host PATH excluding Node/.NET/Git, only Docker+shell/OpenSSL/POSIXtools; same images/secrets and non-root mounted secret readability.';});
   await check('initial setup, avatars, access and restart',async()=>{await onboarding(candidate,candidateUrl);checkLocked(candidate,expected);});
   await check('private images and removed optimizer',async()=>{const r=await fetch(candidateUrl+'/_next/image?url=%2Fapi%2Fv1%2Ffiles%2Fnone%2Fcontent&w=640&q=75');assert.equal(r.status,404);run('docker',['run','--rm','--entrypoint','node',expected.services.frontend.image,'-e',"const fs=require('fs');for(const p of ['/app/node_modules/sharp','/app/node_modules/@img'])if(fs.existsSync(p))throw Error('Unexpected sharp/libvips native runtime: '+p);"]);return 'Optimizer endpoint404; sharp/@img absent from actual frontend runtime; authenticated raw image coverage below.';});
-  await check('PowerShell installation from archive',async()=>{const ps=join(stage,'powershell');extract(archive,ps);projects.push(ps);const url=install(ps,{project:projectName('ps'),port:33215,mode:'pwsh'});await ready(url);const hashes=secretHashes(ps);install(ps,{project:jsonConfig(ps).name,port:33215,mode:'pwsh'});assert.deepEqual(secretHashes(ps),hashes);checkLocked(ps,expected);checkRuntimePermissions(ps);return 'PowerShell7 Linux Docker startup/rerun and actual non-root mounted secret readability.';});
+  const candidateHttpRoot=join(stage,'powershell');let candidateHttpUrl;
+  await check('PowerShell installation from archive',async()=>{const ps=candidateHttpRoot;extract(archive,ps);projects.push(ps);const url=install(ps,{project:projectName('ps'),port:33215,mode:'pwsh'});candidateHttpUrl=url;await ready(url);const hashes=secretHashes(ps);install(ps,{project:jsonConfig(ps).name,port:33215,mode:'pwsh'});assert.deepEqual(secretHashes(ps),hashes);checkLocked(ps,expected);checkRuntimePermissions(ps);return 'PowerShell7 Linux Docker startup/rerun and actual non-root mounted secret readability.';});
+  await check('candidate HTTP, files, Range and SignalR',async()=>{
+    await integration(candidateHttpRoot,candidateHttpUrl);checkLocked(candidateHttpRoot,expected);
+    return 'Fresh final candidate images: authenticated HTTP/roles/CSRF, ordinary and vault original checksums, byte ranges, social feed/replies/hearts and actual two-partner SignalR, planner/wishes/TOTP, then same-digest DB/API recreation and persistence.';
+  });
   await check('backend core, native avatars and setup races',()=>{
     checksContainer=projectName('checks');const password=randomBytes(24).toString('hex');const passwordPath=join(stage,'postgres-password');writeFileSync(passwordPath,password,{mode:0o600});
     run('docker',['run','-d','--name',checksContainer,'-p','127.0.0.1::5432','--mount',`type=bind,source=${passwordPath},target=/run/check-password,readonly`,'-e','POSTGRES_PASSWORD_FILE=/run/check-password',expected.services.db.image],{capture:true});
@@ -84,6 +89,7 @@ try{
   });
   await check('candidate recreation persistence',async()=>{compose(original,['up','-d','--no-build','--force-recreate']);await ready(originalUrl);checkLocked(original,expected);test(original,originalUrl,'persistence');});
   report.checks.push({name:'Windows Docker full installation',status:'NOT RUN',required:false,detail:'Not a supported release platform; PowerShell7 on Linuxamd64 is tested, native WindowsDocker daemon unavailable.'});
+  report.checks.push({name:'operator public HTTPS and Tailscale authorization',status:'NOT RUN',required:false,detail:'Installer configuration fixtures cover HTTPS origins and overrides. Live domain certificates and tailnet authorization depend on operator infrastructure; this candidate acceptance uses isolated loopback HTTP.'});
 }catch(error){if(!report.checks.some(c=>c.status==='FAIL'))report.checks.push({name:'candidate orchestration',status:'FAIL',detail:error.message});console.error('FAIL candidate acceptance: '+error.message);process.exitCode=1;}
 finally{
   if(checksContainer)run('docker',['rm','-f','-v',checksContainer],{allowFailure:true,capture:true});

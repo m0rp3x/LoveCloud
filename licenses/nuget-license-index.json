@@ -1,0 +1,41 @@
+{
+  "packages": {
+    "Npgsql/10.0.3": {
+      "license": "PostgreSQL",
+      "file": "Npgsql-LICENSE.txt",
+      "sha256": "2e1d9cc6ed4eb7fe6fa82091846c06b4f58571a2c3b54777db6baeca10dd2d74",
+      "packageSha256": "75d0970923a8c9fcbbd37e4ebe72fee0b10362a1e36723e86777df1b6728316d",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/npgsql/npgsql",
+        "commit": "d3768398c17877b3a916c3c4d87e8e11698991fc"
+      },
+      "noticeURL": "https://raw.githubusercontent.com/npgsql/npgsql/d3768398c17877b3a916c3c4d87e8e11698991fc/LICENSE"
+    },
+    "Npgsql.EntityFrameworkCore.PostgreSQL/10.0.3": {
+      "license": "PostgreSQL",
+      "file": "Npgsql-EFCore-LICENSE.txt",
+      "sha256": "bc2fdab8551ca4022196dbbd3dc582ca65211209196a3459b1bab60cb71a9979",
+      "packageSha256": "d889af8847c9db50e4ee98cb2511429dd8b97ea0cb3a5e20926b46c47dcee3c4",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/npgsql/efcore.pg",
+        "commit": "5e912bf071068a44e5abbdab497b313ba99d3ee1"
+      },
+      "noticeURL": "https://raw.githubusercontent.com/npgsql/efcore.pg/5e912bf071068a44e5abbdab497b313ba99d3ee1/LICENSE"
+    },
+    "Microsoft.EntityFrameworkCore/10.0.13": {
+      "license": "MIT",
+      "file": "dotnet-LICENSE.txt",
+      "sha256": "cfc21f5e8bd655ae997eec916138b707b1d290b83272c02a95c9f821b8c87310",
+      "packageSha256": "20dbb8ca069284fe2d6f327f090f3915142ff8e9d69bd2fc94cc8ff9e392ea21",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/dotnet/dotnet",
+        "commit": "4099f83977f4d29604a9aeb971fb0a7bc1d5f699"
+      },
+      "noticeURL": "https://raw.githubusercontent.com/dotnet/dotnet/4099f83977f4d29604a9aeb971fb0a7bc1d5f699/LICENSE.TXT",
+      "comparison": "identical full text including copyright; line endings and final newline normalized"
+    }
+  }
+}

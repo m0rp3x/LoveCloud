@@ -16,7 +16,7 @@ concurrency:
 jobs:
   source:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 45
     services:
       checks-postgres:
         image: postgres:18-alpine
@@ -60,8 +60,30 @@ jobs:
       - name: PowerShell installer fixtures
         shell: pwsh
         run: ./tests/installers.ps1
+      - name: PowerShell operational native dispatch regression
+        shell: pwsh
+        run: ./tests/operations-dispatch.ps1
       - name: License collector regressions (offline mocked executor)
-        run: python3 tests/test_license_collector.py
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          node tests/npm-license-graph.mjs
+      - name: Actual historical Ubuntu source probe (isolated public runtime base)
+        timeout-minutes: 20
+        run: python3 tests/os-source-probe.py --report "${{ runner.temp }}/os-source-probe.json"
+      - name: Actual Alpine busybox source probe (isolated public Node base)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 12
+        run: python3 tests/os-source-probe.py --probe alpine --report "${{ runner.temp }}/alpine-source-probe.json"
+      - name: Upload only sanitized source-probe results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-probe-results
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/os-source-probe.json
+            ${{ runner.temp }}/alpine-source-probe.json
       - name: JavaScript syntax and operational shell syntax
         run: |
           for file in tests/*.mjs scripts/release/*.mjs; do node --check "$file"; done
@@ -77,4 +99,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: PowerShell real Windows filesystem and configuration fixtures
         shell: pwsh
-        run: ./tests/installers.ps1
+        run: |
+          ./tests/installers.ps1
+          ./tests/operations-dispatch.ps1

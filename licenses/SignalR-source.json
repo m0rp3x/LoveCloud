@@ -1,0 +1,10 @@
+{
+  "package": "@microsoft/signalr",
+  "version": "10.0.11",
+  "repository": "https://github.com/dotnet/aspnetcore",
+  "releaseTag": "v10.0.11",
+  "commit": "a5383385245bdacc20ec19f30e46090a8154d8da",
+  "noticeURL": "https://raw.githubusercontent.com/dotnet/aspnetcore/a5383385245bdacc20ec19f30e46090a8154d8da/LICENSE.txt",
+  "sha256": "cfc21f5e8bd655ae997eec916138b707b1d290b83272c02a95c9f821b8c87310",
+  "reason": "npm package includes es6-promise third-party notices but omits its own full MIT text; upstream official release license retained"
+}

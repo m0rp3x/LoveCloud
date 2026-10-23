@@ -266,34 +266,103 @@ def collect_native_sources(report, out):
     return result
 
 
+def validate_static_nuget_notices(report, out, static=None):
+    """Reject SPDX-only/wrapper-only delivery: full runtime notices must ship.
+
+    The actual-image NuGet inventory selects packages. Their retained actual
+    license text/copyright must also appear in the static image license bundle,
+    either as its own file or inside an upstream aggregate. This is stronger
+    than matching an SPDX family while silently dropping a different owner.
+    """
+    static=Path(static) if static is not None else ROOT/'licenses'
+    normalize=lambda text:text.replace('\r\n','\n').strip()
+    texts=[normalize(path.read_text(encoding='utf-8-sig')) for path in static.rglob('*.txt')]
+    index=json.loads((static/'nuget-license-index.json').read_text(encoding='utf-8'))['packages']
+    for package,entry in index.items():
+        file=static/entry['file']
+        if not file.is_file() or hashlib.sha256(file.read_bytes().replace(b'\r\n',b'\n')).hexdigest()!=entry['sha256']:
+            raise RuntimeError('Static NuGet notice provenance/hash mismatch: '+package)
+    checks=[]
+    for package in sorted(set(report['nuget'])):
+        name,version=package.rsplit('/',1)
+        directory=out/'nuget'/safe_name(name+'-'+version)
+        metadata=json.loads((directory/'source.json').read_text(encoding='utf-8'))
+        files=[directory/name for name in metadata['notices'] if 'license' in name.lower()]
+        notices=[normalize(file.read_text(encoding='utf-8-sig')) for file in files]
+        if not notices or not any(len(notice)>300 and any(notice in text for text in texts) for notice in notices):
+            raise RuntimeError('Actual NuGet copyright/license missing from API image bundle: '+package)
+        if package.startswith('Npgsql'):
+            if package not in index: raise RuntimeError('Exact Npgsql version requires reviewed notice provenance: '+package)
+        checks.append({'package':package,'status':'PASS','detail':'Full actual license/copyright retained in static API image bundle; SPDX alone is insufficient.'})
+    result={'status':'PASS','checks':checks}
+    (out/'static-nuget-notices.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    return result
+
+
 ALPINE_FETCH = r'''set -eu
 apk add --no-cache alpine-sdk curl >/dev/null
 mkdir -p /output/recipes /output/distfiles
+download_recipe_archive() {
+  archive_url=$1
+  # Both providers are public, exact-commit official repositories. Keep useful
+  # HTTP diagnostics instead of hiding failures behind a generic final error.
+  printf 'Fetching exact aports recipe: %s\n' "$archive_url" >&2
+  if ! curl --fail --silent --show-error --location --connect-timeout 20 --max-time 180 --retry 3 --retry-delay 3 "$archive_url" -o /tmp/aports.tar.gz; then
+    return 1
+  fi
+  if ! tar -tzf /tmp/aports.tar.gz > /tmp/lc-aports-files.txt; then
+    printf 'Invalid aports archive from %s\n' "$archive_url" >&2
+    return 1
+  fi
+}
+acquire_recipe_directory() {
+  repo=$1
+  # Extract only this package's immutable recipe and local patches/data, even
+  # when the official GitHub mirror returns a complete aports repository.
+  recipe_tree=$(awk -v wanted="/$repo/$origin/" 'index($0,wanted) { print substr($0,1,index($0,wanted)+length(wanted)-1); exit }' /tmp/lc-aports-files.txt)
+  [ -n "$recipe_tree" ] || return 1
+  rm -rf /tmp/lc-source
+  mkdir -p "/output/recipes/$origin" /tmp/lc-source
+  tar -xzf /tmp/aports.tar.gz -C /tmp/lc-source "$recipe_tree" || exit 1
+  build=$(find /tmp/lc-source -path "*/$repo/$origin/APKBUILD" -print -quit)
+  [ -n "$build" ] || return 1
+  cp -a "$(dirname "$build")/." "/output/recipes/$origin/" || exit 1
+  # Explicit failure is necessary: this function is called from an if clause,
+  # where POSIX shells suppress implicit set -e handling inside functions.
+  (cd "/output/recipes/$origin" && SRCDEST=/output/distfiles abuild -F fetch && SRCDEST=/output/distfiles abuild -F verify) || exit 1
+  printf '%s\n' "$archive_url" > "/output/recipes/$origin/recipe-url.txt"
+}
 while IFS='|' read -r origin version commit; do
   [ -n "$origin" ] || continue
+  case "$origin" in *[!A-Za-z0-9+_.-]*) echo 'Invalid APK source origin.' >&2; exit 1;; esac
+  case "$commit" in ''|*[!0-9a-f]*) echo 'APK source requires an exact commit.' >&2; exit 1;; esac
+  [ "${#commit}" = 40 ] || { echo 'APK source requires a complete commit.' >&2; exit 1; }
   found=0
   for repo in main community testing; do
     recipe="https://gitlab.alpinelinux.org/alpine/aports/-/archive/$commit/aports-$commit.tar.gz?path=$repo/$origin"
-    if curl --fail --location --connect-timeout 20 --max-time 180 --retry 3 --retry-delay 3 "$recipe" -o /tmp/aports.tar.gz 2>/dev/null; then
-      # Fixed private staging path inside this disposable helper only. Keep
-      # output sources/recipes, but do not accumulate full aports checkouts.
-      rm -rf /tmp/lc-source
-      mkdir -p "/output/recipes/$origin" /tmp/lc-source
-      tar -xzf /tmp/aports.tar.gz -C /tmp/lc-source
-      build=$(find /tmp/lc-source -path "*/$repo/$origin/APKBUILD" -print -quit)
-      if [ -n "$build" ]; then
-        cp -a "$(dirname "$build")/." "/output/recipes/$origin/"
-        (cd "/output/recipes/$origin" && SRCDEST=/output/distfiles abuild -F fetch && SRCDEST=/output/distfiles abuild -F verify)
-        printf '%s\n' "$recipe" > "/output/recipes/$origin/recipe-url.txt"
-        found=1
-        break
-      fi
+    if download_recipe_archive "$recipe" && acquire_recipe_directory "$repo"; then
+      found=1
+      break
     fi
   done
+  if [ "$found" = 0 ]; then
+    # Official alpinelinux/aports mirror identifies GitLab alpine/aports as its
+    # homepage. The same full Git commit is mandatory; never fetch a branch or
+    # a latest release. Download this fallback only once, then inspect repos.
+    recipe="https://codeload.github.com/alpinelinux/aports/tar.gz/$commit"
+    if download_recipe_archive "$recipe"; then
+      for repo in main community testing; do
+        if acquire_recipe_directory "$repo"; then
+          found=1
+          break
+        fi
+      done
+    fi
+  fi
   [ "$found" = 1 ] || { echo "Cannot acquire source recipe for $origin $version" >&2; exit 1; }
 done < /output/packages.txt
 rm -rf /tmp/lc-source
-rm -f /tmp/aports.tar.gz
+rm -f /tmp/aports.tar.gz /tmp/lc-aports-files.txt
 printf 'sources-verified\n' > /output/source-fetch-complete.txt
 '''
 
@@ -314,11 +383,61 @@ mkdir -p /output/repositories /output/source-metadata
 cp -a /etc/apt/sources.list.d /output/repositories/
 [ ! -f /etc/apt/sources.list ] || cp /etc/apt/sources.list /output/repositories/
 cd /output/sources
+snapshot_id=20260901T000000Z
+snapshot_root=/output/source-metadata/ubuntu-snapshot
+snapshot_ready=false
+snapshot_apt() {
+  apt-get -o Dir::Etc::sourcelist=/dev/null \
+    -o Dir::Etc::sourceparts="$snapshot_root/sources.list.d" \
+    -o Dir::State::lists="$snapshot_root/lists" \
+    "$@" --snapshot "$snapshot_id"
+}
+prepare_snapshot() {
+  [ "$snapshot_ready" = false ] || return 0
+  # This dated fallback is Ubuntu-only. Keep the image's current repositories
+  # and Signed-By trust roots unchanged; historical indexes live separately.
+  grep -Eq '^ID="?ubuntu"?$' /etc/os-release || {
+    echo 'Exact source version unavailable; historical fallback supports Ubuntu only.' >&2; exit 1;
+  }
+  mkdir -p "$snapshot_root/sources.list.d" "$snapshot_root/lists/partial"
+  for source in /etc/apt/sources.list.d/*-lovecloud-src.sources; do
+    [ -f "$source" ] || continue
+    awk -v snapshot="$snapshot_id" 'BEGIN {RS=""; ORS="\n\n"}
+      /(^|\n)URIs: [^\n]*https?:\/\/([A-Za-z0-9.-]+\.)?(archive|security|ports)\.ubuntu\.com\/ubuntu(-ports)?\/?([ \n]|$)/ {
+        gsub(/(^|\n)Types:[^\n]*/, "\nTypes: deb-src")
+        gsub(/(^|\n)Snapshot:[^\n]*/, "")
+        print $0 "\nSnapshot: " snapshot
+      }' "$source" > "$snapshot_root/sources.list.d/$(basename "$source")"
+  done
+  # Ubuntu 24.04's official deb822 files retain Signed-By. Do not invent
+  # replacement keys or relax APT authentication for an unknown source setup.
+  grep -l '^Signed-By:' "$snapshot_root"/sources.list.d/*.sources >/dev/null || {
+    echo 'No authenticated Ubuntu source stanza for historical fallback.' >&2; exit 1;
+  }
+  printf '%s\n' "$snapshot_id" > "$snapshot_root/snapshot-id.txt"
+  snapshot_apt update >/dev/null
+  snapshot_ready=true
+}
 while IFS='|' read -r package version; do
   [ -n "$package" ] || continue
-  apt-get source --print-uris "$package=$version" > "/output/source-metadata/$package-uris.txt"
-  apt-get source --download-only "$package=$version"
+  if apt-get source --only-source --print-uris "$package=$version" > "/output/source-metadata/$package-uris.txt"; then
+    apt-get source --only-source --download-only "$package=$version"
+  else
+    # Old base-image packages can disappear from current Sources indexes.
+    # The exact same source version must exist in a signed historical index;
+    # a missing version still fails and never falls back to the latest source.
+    prepare_snapshot
+    snapshot_apt source --only-source --print-uris "$package=$version" > "/output/source-metadata/$package-uris.txt"
+    snapshot_apt source --only-source --download-only "$package=$version"
+  fi
 done < /output/packages.txt
+# APT's root-only lock/partial workspace is not licensing evidence. These exact
+# paths belong only to this disposable helper's private snapshot lists; retain
+# every signed index, source file and repository configuration beside them.
+if [ "$snapshot_ready" = true ]; then
+  rm -f -- /output/source-metadata/ubuntu-snapshot/lists/lock
+  rm -rf -- /output/source-metadata/ubuntu-snapshot/lists/partial
+fi
 printf 'sources-verified\n' > /output/source-fetch-complete.txt
 '''
 
@@ -409,6 +528,7 @@ def main():
         report['images'][role]={'image':image,'id':inventory['id'],'licenseFiles':len(inventory['licenseFiles']),'packages':len(inventory['packages'])}
         if role=='api':
             collect_nuget(inventory,out)
+            report['staticNugetNotices']=validate_static_nuget_notices(inventory,out,out/'api/files/usr/share/licenses/lovecloud/licenses')
             report['nativeSources']=collect_native_sources(inventory,out)
         report['sources'][role]=collect_os_sources(role,image,inventory,out,args.fetch_os_sources)
     scan_layers(args.frontend_image,out)
