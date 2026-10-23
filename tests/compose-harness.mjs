@@ -29,9 +29,10 @@ export function copySourceInstall(target,images){
   for(const name of ['ops','scripts'])cpSync(join(sourceRoot,name),join(target,name),{recursive:true});
   copyFileSync(images,join(target,'compose.images.yaml'));
 }
-export function install(root,{port,project,mode='sh',extraFiles=[],start=true}){
+export function install(root,{port,project,mode='sh',extraFiles=[],start=true,hostPath}){
   const url=`http://localhost:${port}`;
   const env={LOVE_CLOUD_PORT:String(port),LOVE_CLOUD_BIND:'127.0.0.1',APP_ORIGIN:url,SECURE_COOKIES:'false'};
+  if(hostPath)env.PATH=hostPath;
   if(mode==='pwsh'){
     // -File cannot bind multiple string[] values; a tiny command script uses
     // proper PowerShell argument binding, never interpolation of a token.

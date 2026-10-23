@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {resolve,join,basename} from 'node:path';
-import {readFileSync,writeFileSync,mkdirSync,cpSync,copyFileSync,existsSync,readdirSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,cpSync,copyFileSync,existsSync,readdirSync,symlinkSync} from 'node:fs';
 import {randomBytes,createHash} from 'node:crypto';
 import {run,sourceRoot,scratch,projectName,compose,jsonConfig,install,checkLocked,checkRuntimePermissions,ready,test,integration,onboarding,clean} from '../../tests/compose-harness.mjs';
 
@@ -21,6 +21,8 @@ function syntheticState(from,to){mkdirSync(join(to,'.artifacts'),{recursive:true
 function secretHashes(root){return Object.fromEntries(['database_password','database_connection','bootstrap_password','setup_token'].map(name=>[name,createHash('sha256').update(readFileSync(join(root,'.secrets',name))).digest('hex')]));}
 let checksContainer;
 try{
+  assert.equal(run('git',['rev-parse','HEAD'],{capture:true}),options['source-sha'],'QA checkout must be the exact release commit.');
+  run('git',['diff','--exit-code'],{capture:true});run('git',['diff','--cached','--exit-code'],{capture:true});
   const archive=resolve(options.archive),lock=resolve(options.images),candidate=join(stage,'candidate');
   await check('install archive allowlist',()=>{extract(archive,candidate);assert.equal(readFileSync(join(candidate,'VERSION'),'utf8').trim(),'0.1.0');assert.equal(readFileSync(join(candidate,'compose.images.yaml'),'utf8'),readFileSync(lock,'utf8'));for(const file of ['LICENSE','THIRD_PARTY_NOTICES','scripts/init.sh','scripts/init.ps1'])assert(existsSync(join(candidate,file)),`Included ${file}`);return 'Opened actual release tar.gz; no app source, personal environment or secrets.';});
   await check('ZIP contents match verified tar archive',()=>{
@@ -28,9 +30,14 @@ try{
     run('python',['-c',"import sys,zipfile,tarfile,hashlib\nwith zipfile.ZipFile(sys.argv[1]) as z, tarfile.open(sys.argv[2]) as t:\n a={x.filename:hashlib.sha256(z.read(x)).hexdigest() for x in z.infolist() if not x.is_dir()}\n b={x.name:hashlib.sha256(t.extractfile(x).read()).hexdigest() for x in t.getmembers() if x.isfile()}\n assert a==b, 'ZIP/tar payload mismatch'",zip,archive]);return 'Opened ZIP with CRC/content reads; every file SHA256 matches tar.gz payload.';
   });
   const project=projectName('setup');projects.push(candidate);
-  const candidateUrl=install(candidate,{project,port:33213});await ready(candidateUrl);
+  const hostPath=join(stage,'docker-only-host');mkdirSync(hostPath);
+  for(const tool of ['sh','docker','openssl','dirname','sed','tail','tr','grep','printenv','mktemp','mv','mkdir','chmod','find','cat','sleep']){
+    const path=run('sh',['-c','command -v "$1"','sh',tool],{capture:true});assert(path.startsWith('/'),`External tool path ${tool}`);symlinkSync(path,join(hostPath,tool));
+  }
+  run('sh',['-c','! command -v node && ! command -v dotnet && ! command -v git'],{env:{PATH:hostPath}});
+  const candidateUrl=install(candidate,{project,port:33213,hostPath});await ready(candidateUrl);
   const expected=checkLocked(candidate);report.images={api:expected.services.api.image,frontend:expected.services.frontend.image};save();
-  await check('shell installation from archive',()=>{const hashes=secretHashes(candidate);install(candidate,{project,port:33213});assert.deepEqual(secretHashes(candidate),hashes);checkLocked(candidate,expected);checkRuntimePermissions(candidate);return 'Fresh start and idempotent rerun, ready, same pinned images/secrets, actual non-root mounted secret readability.';});
+  await check('shell installation from archive',()=>{const hashes=secretHashes(candidate);install(candidate,{project,port:33213,hostPath});assert.deepEqual(secretHashes(candidate),hashes);checkLocked(candidate,expected);checkRuntimePermissions(candidate);return 'Fresh start/rerun with host PATH excluding Node/.NET/Git, only Docker+shell/OpenSSL/POSIXtools; same images/secrets and non-root mounted secret readability.';});
   await check('initial setup, avatars, access and restart',async()=>{await onboarding(candidate,candidateUrl);checkLocked(candidate,expected);});
   await check('private images and removed optimizer',async()=>{const r=await fetch(candidateUrl+'/_next/image?url=%2Fapi%2Fv1%2Ffiles%2Fnone%2Fcontent&w=640&q=75');assert.equal(r.status,404);run('docker',['run','--rm','--entrypoint','node',expected.services.frontend.image,'-e',"const fs=require('fs');for(const p of ['/app/node_modules/sharp','/app/node_modules/@img'])if(fs.existsSync(p))throw Error('Unexpected sharp/libvips native runtime: '+p);"]);return 'Optimizer endpoint404; sharp/@img absent from actual frontend runtime; authenticated raw image coverage below.';});
   await check('PowerShell installation from archive',async()=>{const ps=join(stage,'powershell');extract(archive,ps);projects.push(ps);const url=install(ps,{project:projectName('ps'),port:33215,mode:'pwsh'});await ready(url);const hashes=secretHashes(ps);install(ps,{project:jsonConfig(ps).name,port:33215,mode:'pwsh'});assert.deepEqual(secretHashes(ps),hashes);checkLocked(ps,expected);checkRuntimePermissions(ps);return 'PowerShell7 Linux Docker startup/rerun and actual non-root mounted secret readability.';});
@@ -75,7 +82,7 @@ try{
   });
   await check('candidate recreation persistence',async()=>{compose(original,['up','-d','--no-build','--force-recreate']);await ready(originalUrl);checkLocked(original,expected);test(original,originalUrl,'persistence');});
   report.checks.push({name:'Windows Docker full installation',status:'NOT RUN',required:false,detail:'Not a supported release platform; PowerShell7 on Linuxamd64 is tested, native WindowsDocker daemon unavailable.'});
-}catch(error){console.error('FAIL candidate acceptance: '+error.message);process.exitCode=1;}
+}catch(error){if(!report.checks.some(c=>c.status==='FAIL'))report.checks.push({name:'candidate orchestration',status:'FAIL',detail:error.message});console.error('FAIL candidate acceptance: '+error.message);process.exitCode=1;}
 finally{
   if(checksContainer)run('docker',['rm','-f','-v',checksContainer],{allowFailure:true,capture:true});
   for(const root of projects.reverse()){try{clean(root);}catch(error){console.error('Disposable cleanup failed: '+error.message);process.exitCode=1;}}
