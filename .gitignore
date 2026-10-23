@@ -10,3 +10,4 @@ obj/
 backups/
 *.user
 TestResults/
+__pycache__/
