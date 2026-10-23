@@ -39,13 +39,15 @@ npm run build --prefix frontend
 Для связанных изменений API и хранилища в PowerShell7 с Node.js24:
 
 ```powershell
-docker compose -f compose.yaml -f compose.dev.yaml build
-./scripts/test.ps1
-./scripts/test-onboarding.ps1
+./scripts/test.ps1 -ImagesFile /path/to/candidate/compose.images.yaml
+./scripts/test-onboarding.ps1 -ImagesFile /path/to/candidate/compose.images.yaml
 ```
 
-Сквозные тесты создают отдельные одноразовые проекты на3212/3213.
-Они используют синтетические данные. Не направляйте их на своё облако.
+Укажите digest lock из candidate workflow именно вашего коммита.
+Эти сквозные тесты проверяют готовые candidate-образы, а не изменённые
+исходники или произвольный локальный dev-тег. Они создают одноразовые
+проекты на 3212/3213 и используют синтетические данные. Не направляйте
+их на своё облако. Запуск исходников описан в [DEVELOPMENT](docs/DEVELOPMENT.md).
 
 Проверяйте сценарии, которые меняете: успешный результат, ошибку, пустое
 состояние и права доступа. Миграции должны сохранять существующие данные.
