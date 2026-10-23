@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "imageReference": "nginx@sha256:2db7d28517d1fba17c2da3210395f7be11a11b419246ad0da2edf782af72f367",
+  "imageDigest": "sha256:2db7d28517d1fba17c2da3210395f7be11a11b419246ad0da2edf782af72f367",
+  "reviewedVersion": "1.31.8-r1",
+  "packaging": {
+    "repository": "https://github.com/nginx/pkg-oss",
+    "tag": "1.31.8-1",
+    "commit": "e2355e8d1baefd6b6acf13a876cbf570b71a02b5",
+    "root": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5",
+    "requiredMembers": [
+      "alpine/Makefile",
+      "alpine/Makefile.module-njs",
+      "alpine/Makefile.module-acme",
+      "contrib/src/quickjs/quickjs.makefile.patch",
+      "contrib/src/nginx/version",
+      "contrib/src/njs/version",
+      "contrib/src/nginx-acme/version",
+      "contrib/src/quickjs/version"
+    ]
+  },
+  "packages": [
+    {
+      "name": "nginx",
+      "version": "1.31.8-r1",
+      "origin": "nginx",
+      "apkLicense": "2-clause BSD-like license",
+      "components": [
+        "nginx"
+      ],
+      "copyrightMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/docs/nginx.copyright"
+    },
+    {
+      "name": "nginx-module-geoip",
+      "version": "1.31.8-r1",
+      "origin": "nginx-module-geoip",
+      "apkLicense": "2-clause BSD-like license",
+      "components": [
+        "nginx"
+      ],
+      "copyrightMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/docs/nginx.copyright"
+    },
+    {
+      "name": "nginx-module-image-filter",
+      "version": "1.31.8-r1",
+      "origin": "nginx-module-image-filter",
+      "apkLicense": "2-clause BSD-like license",
+      "components": [
+        "nginx"
+      ],
+      "copyrightMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/docs/nginx.copyright"
+    },
+    {
+      "name": "nginx-module-xslt",
+      "version": "1.31.8-r1",
+      "origin": "nginx-module-xslt",
+      "apkLicense": "2-clause BSD-like license",
+      "components": [
+        "nginx"
+      ],
+      "copyrightMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/docs/nginx.copyright"
+    },
+    {
+      "name": "nginx-module-njs",
+      "version": "1.31.8.1.0.2-r1",
+      "origin": "nginx-module-njs",
+      "apkLicense": "2-clause BSD-like license",
+      "components": [
+        "nginx",
+        "njs",
+        "quickjs"
+      ],
+      "copyrightMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/docs/nginx-module-njs.copyright"
+    },
+    {
+      "name": "nginx-module-acme",
+      "version": "1.31.8.0.4.1-r1",
+      "origin": "nginx-module-acme",
+      "apkLicense": "2-clause BSD-like license",
+      "components": [
+        "nginx",
+        "acme",
+        "cargo-lock-source-superset"
+      ],
+      "copyrightMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/docs/nginx-module-acme.copyright"
+    }
+  ],
+  "sources": [
+    {
+      "id": "pkg-oss",
+      "url": "https://codeload.github.com/nginx/pkg-oss/tar.gz/e2355e8d1baefd6b6acf13a876cbf570b71a02b5",
+      "file": "pkg-oss-1.31.8-1.tar.gz",
+      "sha256": "7e7b312669b2c01678cc78fccfb36cd0a1f2a201c345d6ae17720f84a2d11225",
+      "licenseMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/LICENSE",
+      "upstreamLicense": "BSD-2-Clause"
+    },
+    {
+      "id": "nginx",
+      "url": "https://nginx.org/download/nginx-1.31.8.tar.gz",
+      "file": "nginx-1.31.8.tar.gz",
+      "sha256": "0652b760b3b772d2ec17b47c2fc15d9a95e6fe35cd5b877eadc1a62d9bc75af1",
+      "licenseMember": "nginx-1.31.8/LICENSE",
+      "upstreamLicense": "BSD-2-Clause",
+      "sha512": "b05679bd30746f41b17343be570ed62b2bb0bc64e15d24d8af307db03d5227ab6b1da57bb4b640ad4d4c854a0c0233285d5ba294caa4ad199c49522883700fce",
+      "pkgOssChecksumMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/contrib/src/nginx/SHA512SUMS"
+    },
+    {
+      "id": "njs",
+      "url": "https://packages.nginx.org/contrib/njs/njs-1.0.2.tar.gz",
+      "file": "njs-1.0.2.tar.gz",
+      "sha256": "ff86d2dd6bf7b874f5ade21da9f17837807e39a7b8172bf7cd3c87fd9f8d637e",
+      "licenseMember": "njs-1.0.2/LICENSE",
+      "upstreamLicense": "BSD-2-Clause",
+      "sha512": "ba97d5f8a06885fd5fff00ff18ddc2fca42fddd1fa3241202255fa86d017f7a1321f32e75b47e8e632ded5daf3e8c3d07dc8bb3b4abefbee06d0d55dae2de8af",
+      "pkgOssChecksumMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/contrib/src/njs/SHA512SUMS"
+    },
+    {
+      "id": "acme",
+      "url": "https://packages.nginx.org/contrib/nginx-acme/nginx-acme-0.4.1.tar.gz",
+      "file": "nginx-acme-0.4.1.tar.gz",
+      "sha256": "b4f99f971bd0bebc89b2037f3afeaa3281004fe434de558df87d69cab2be1f22",
+      "licenseMember": "nginx-acme-0.4.1/LICENSE",
+      "upstreamLicense": "Apache-2.0",
+      "sha512": "9e2a85e793a3f239f3ea11735cdc98a0a79ef6846c784f805aeed54cbc61df7c43d3a92bb7d2a5dda6ab46850a4ed6c12bdd519e32f198ac52426dfac7e4bf87",
+      "pkgOssChecksumMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/contrib/src/nginx-acme/SHA512SUMS"
+    },
+    {
+      "id": "quickjs",
+      "url": "https://packages.nginx.org/contrib/quickjs/quickjs-2026.06.04-3d5e064e9dd67c70f7962836505a7fa067bf0a4e.tar.gz",
+      "file": "quickjs-2026.06.04-3d5e064e9dd67c70f7962836505a7fa067bf0a4e.tar.gz",
+      "sha256": "afccd11533e21a4e49af43e6909fc7236ed0b92f25e01e1061ceb0b47e15e05d",
+      "licenseMember": "quickjs-3d5e064e9dd67c70f7962836505a7fa067bf0a4e/LICENSE",
+      "upstreamLicense": "MIT",
+      "sha512": "f3cfb809155bc3fe94fc843ee17e19a6259fe7ddd3ad089748eb50fc2d3a8bcb1222db9e9a8e52eef9335bee5a8ed2e3f9a15c396f47815a864f97b9fd604aef",
+      "pkgOssChecksumMember": "pkg-oss-e2355e8d1baefd6b6acf13a876cbf570b71a02b5/contrib/src/quickjs/SHA512SUMS"
+    }
+  ],
+  "cargo": {
+    "component": "acme",
+    "lockMember": "nginx-acme-0.4.1/Cargo.lock",
+    "registry": "registry+https://github.com/rust-lang/crates.io-index",
+    "sourceScope": "Checksum-pinned Cargo.lock registry source/notice superset; not a claim all packages are linked in the binary.",
+    "licenseSelections": [
+      {
+        "name": "http-serde",
+        "version": "2.1.1",
+        "checksum": "0f056c8559e3757392c8d091e796416e4649d8e49e88b8d76df6c002f05027fd",
+        "declaredLicense": "Apache-2.0 OR MIT",
+        "selectedLicense": "Apache-2.0",
+        "metadataMember": "http-serde-2.1.1/Cargo.toml",
+        "licenseFile": "licenses/Apache-2.0.txt",
+        "licenseSha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "reason": "Published crate contains no standalone license file; choose its explicitly declared Apache-2.0 alternative. Retain original package metadata including authors and the full official license text."
+      }
+    ]
+  }
+}

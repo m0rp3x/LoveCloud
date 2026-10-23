@@ -12,8 +12,10 @@ import os
 from pathlib import Path
 import platform
 import re
+import signal
 import subprocess
 import tempfile
+import tarfile
 import time
 import uuid
 from urllib.parse import urlsplit, parse_qs
@@ -21,9 +23,57 @@ from unittest.mock import patch
 
 IMAGE = 'mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b'
 NODE_IMAGE = 'node@sha256:1200d815de24f8dcca745fbf7651d166034a35adbcad8860a8538ffff44f1420'
+NGINX_IMAGE = 'nginx@sha256:2db7d28517d1fba17c2da3210395f7be11a11b419246ad0da2edf782af72f367'
 VERSION = '255.4-1ubuntu8.17'
 SNAPSHOT = 'https://snapshot.ubuntu.com/ubuntu/20260901T000000Z/'
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def verify_nginx_vendor_payload(target, result, selected, catalog):
+    """Check acquired bytes and notice evidence independently of helper success."""
+    assert result['status']=='PASS' and result['imageDigest']==NGINX_IMAGE.split('@')[1]
+    with catalog.open('rb') as stream: catalog_hash=hashlib.file_digest(stream,'sha256').hexdigest()
+    assert result['catalogSha256']==catalog_hash, 'Record the exact reviewed vendor catalog.'
+    assert result['packages']==selected, 'Preserve all six actual APK identities without rewriting license metadata.'
+    assert (target/'source-fetch-complete.txt').read_text()=='vendor-sources-verified\n', 'Verified vendor completion marker required.'
+    recorded=json.loads((target/'source-provenance.json').read_text())
+    for key in ['status','imageDigest','catalogSha256','packages','sources','licenses','mappings']:
+        assert recorded[key]==result[key], 'Retained vendor provenance must match returned evidence: '+key
+    expected={(package['name'],package['version']) for package in selected}
+    assert {(item['name'],item['version']) for item in result['mappings']}==expected, 'Every actual vendor APK needs an explicit component mapping.'
+    assert all(item['components'] for item in result['mappings']), 'Vendor component mappings must be nonempty.'
+
+    def file_for(entry):
+        relative=Path(entry['file'])
+        assert not relative.is_absolute() and '..' not in relative.parts, 'Vendor evidence paths must stay inside their target.'
+        file=target/relative
+        assert file.resolve().is_relative_to(target.resolve()) and file.is_file(), 'Missing acquired vendor evidence: '+entry['file']
+        with file.open('rb') as stream: digest=hashlib.file_digest(stream,'sha256').hexdigest()
+        assert digest==entry['sha256'], 'Acquired vendor evidence checksum mismatch: '+entry['file']
+        return file
+
+    sources=result['sources'];assert sources, 'Full vendor source archives are required.'
+    for entry in sources:
+        file=file_for(entry)
+        assert file.stat().st_size==entry['bytes'], 'Incomplete acquired source: '+entry['file']
+        if entry.get('sha512'):
+            with file.open('rb') as stream: actual=hashlib.file_digest(stream,'sha512').hexdigest()
+            assert actual==entry['sha512'], 'Vendor source SHA512 mismatch.'
+        if file.name.endswith(('.tar.gz','.tar.xz','.tar.bz2','.tgz','.crate')):
+            with tarfile.open(file,'r:*') as archive: assert archive.next() is not None, 'Downloaded source must be a nonempty real archive.'
+    names=[entry['file'].lower() for entry in sources]
+    assert any('nginx-1.31.8' in name and name.endswith('.tar.gz') for name in names), 'Exact nginx core source required.'
+    assert any('njs' in name and name.endswith('.tar.gz') for name in names), 'Exact njs source required.'
+    assert any('quickjs' in name and name.endswith(('.tar.gz','.tar.xz','.tar.bz2')) for name in names), 'Exact QuickJS source archive required.'
+    assert any('quickjs' in name and name.endswith('.patch') for name in names), 'Applied QuickJS patch source required.'
+    assert sum(name.endswith('.crate') for name in names)==76, 'Retain all 76 exact registry sources from the reviewed ACME Cargo.lock.'
+    packaging_commit='e2355e8d1baefd6b6acf13a876cbf570b71a02b5'
+    assert any(entry['url']==f'https://codeload.github.com/nginx/pkg-oss/tar.gz/{packaging_commit}' for entry in sources), 'Exact official pkg-oss packaging recipes required.'
+    licenses=result['licenses'];assert licenses, 'Full upstream vendor notices required.'
+    texts=[(entry,file_for(entry).read_text(encoding='utf-8-sig')) for entry in licenses]
+    assert any(len(text)>300 and 'copyright' in text.lower() for _,text in texts), 'Full copyright/license text required; SPDX labels are insufficient.'
+    assert any('acme' in str(entry.get('sourceFile','')).lower() and 'Apache License' in text and 'Version 2.0' in text and 'END OF TERMS AND CONDITIONS' in text for entry,text in texts), 'Retain actual ACME Apache-2.0 terms separately from raw vendor APK metadata.'
+    return {'packages':selected,'catalogSha256':catalog_hash,'sources':sources,'licenses':licenses,'mappings':result['mappings']}
 
 
 def verify_aports_provenance(value, commit, origin='busybox'):
@@ -106,16 +156,17 @@ def verify_payload(target):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--probe', choices=['ubuntu','alpine'], default='ubuntu')
+    parser.add_argument('--probe', choices=['ubuntu','alpine','nginx-vendor'], default='ubuntu')
     parser.add_argument('--alpine-package', choices=['busybox','apk-tools'], default='busybox')
     parser.add_argument('--image')
     parser.add_argument('--report', default=str(ROOT / '.artifacts/os-source-probe.json'))
     args = parser.parse_args()
-    args.image=args.image or (NODE_IMAGE if args.probe=='alpine' else IMAGE)
+    args.image=args.image or (NGINX_IMAGE if args.probe=='nginx-vendor' else NODE_IMAGE if args.probe=='alpine' else IMAGE)
     assert re.fullmatch(r'.+@sha256:[0-9a-f]{64}',args.image), 'Probe images must be complete immutable registry references.'
     report = {'sourceSha': os.environ.get('GITHUB_SHA'), 'image': args.image,
-              'package': args.alpine_package if args.probe=='alpine' else 'systemd', 'version': None if args.probe=='alpine' else VERSION,
-              'scope': 'one actual Alpine source origin only' if args.probe=='alpine' else 'one historical Ubuntu source only', 'checks': []}
+              'package': 'six catalogued nginx vendor APKs' if args.probe=='nginx-vendor' else args.alpine_package if args.probe=='alpine' else 'systemd',
+              'version': '1.31.8' if args.probe=='nginx-vendor' else None if args.probe=='alpine' else VERSION,
+              'scope': 'six actual pinned vendor APKs only; not all gateway Alpine sources' if args.probe=='nginx-vendor' else 'one actual Alpine source origin only' if args.probe=='alpine' else 'one historical Ubuntu source only', 'checks': []}
     path = Path(args.report).resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     if platform.system() != 'Linux':
@@ -133,6 +184,25 @@ def main():
         collector = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(collector)
         output = Path(tempfile.mkdtemp(prefix='lovecloud-source-probe-'))
+        if args.probe=='nginx-vendor':
+            assert args.image==NGINX_IMAGE, 'Vendor probe is reviewed only for the exact pinned nginx image.'
+            def expired(signum,frame): raise TimeoutError('The isolated nginx vendor source probe exceeded 15 minutes.')
+            previous=signal.signal(signal.SIGALRM,expired);signal.alarm(900)
+            try:
+                inventory=collector.scan_image('gateway',args.image,output)
+                selected=collector.select_nginx_vendor_packages(args.image,inventory['osPackages'])
+                names={'nginx','nginx-module-acme','nginx-module-geoip','nginx-module-image-filter','nginx-module-njs','nginx-module-xslt'}
+                assert len(selected)==6 and {package['name'] for package in selected}==names, 'All six real vendor APKs must be selected.'
+                assert all(package==next(actual for actual in inventory['osPackages'] if actual['name']==package['name']) for package in selected), 'Keep exact installed package versions and raw metadata.'
+                target=output/'vendor-nginx';image_licenses=output/'gateway/files/usr/share/licenses'
+                assert image_licenses.is_dir(), 'Actual image license files must be inspected.'
+                result=collector.collect_nginx_vendor_sources(args.image,selected,target,image_licenses,download=True)
+                evidence=verify_nginx_vendor_payload(target,result,selected,ROOT/'licenses/nginx-vendor-1.31.8.json')
+                report['checks'].append({'name':'actual pinned nginx vendor sources and full notices','status':'PASS',**evidence})
+                print('PASS actual Linux Docker nginx vendor probe: all six exact APK identities, core/njs/QuickJS+patch/pkg-oss/76Cargo sources, hashes and full upstream notices including Apache ACME.')
+            finally:
+                signal.alarm(0);signal.signal(signal.SIGALRM,previous)
+            return
         if args.probe=='alpine':
             installed=subprocess.check_output(['docker','run','--rm','--entrypoint','cat',args.image,'/lib/apk/db/installed'],text=True,timeout=90)
             package=next(package for package in collector.parse_apk(installed) if package['name']==args.alpine_package)
