@@ -40,8 +40,9 @@ def resolve(ref):
     config = json.loads(subprocess.check_output(['docker', 'buildx', 'imagetools', 'inspect', pinned, '--format', '{{json .Image}}'], text=True))
     if config.get('os') != 'linux' or config.get('architecture') != 'amd64':
         raise RuntimeError('Unexpected actual image architecture: ' + pinned)
-    versions = dict(value.split('=', 1) for value in config.get('config', {}).get('Env', []) if '=' in value and value.split('=', 1)[0].endswith('_VERSION'))
-    label_version = config.get('config', {}).get('Labels', {}).get('org.opencontainers.image.version')
+    image_config = config.get('config') or {}
+    versions = dict(value.split('=', 1) for value in (image_config.get('Env') or []) if '=' in value and value.split('=', 1)[0].endswith('_VERSION'))
+    label_version = (image_config.get('Labels') or {}).get('org.opencontainers.image.version')
     if label_version:
         versions['OCI_VERSION'] = label_version
     return {'tag': ref, 'digest': digest, 'reference': pinned, 'platform': 'linux/amd64', 'versions': versions}
