@@ -113,7 +113,7 @@ networks: !override
 "@ | Add-Content -LiteralPath compose.restore.yaml -Encoding utf8NoBOM
     $lines=@();if(Test-Path .env){$lines=@(Get-Content .env | Where-Object {$_ -notmatch '^(COMPOSE_PROJECT_NAME|COMPOSE_FILE|COMPOSE_PATH_SEPARATOR|APP_ORIGIN|SECURE_COOKIES|LOVE_CLOUD_PORT|LOVE_CLOUD_BIND)='})}
     $separator=if($IsWindows){';'}else{':'}
-    $lines+=@("COMPOSE_PROJECT_NAME=$ProjectName",'COMPOSE_FILE='+((@($files)+@('compose.restore.yaml')) -join $separator),"COMPOSE_PATH_SEPARATOR=$separator","APP_ORIGIN=$Origin",'SECURE_COOKIES='+($originUri.Scheme -eq 'https').ToString().ToLowerInvariant(),"LOVE_CLOUD_PORT=$Port",'LOVE_CLOUD_BIND=127.0.0.1')
+    $lines+=@("COMPOSE_PROJECT_NAME=$ProjectName",('COMPOSE_FILE='+((@($files)+@('compose.restore.yaml')) -join $separator)),"COMPOSE_PATH_SEPARATOR=$separator","APP_ORIGIN=$Origin",('SECURE_COOKIES='+($originUri.Scheme -eq 'https').ToString().ToLowerInvariant()),"LOVE_CLOUD_PORT=$Port",'LOVE_CLOUD_BIND=127.0.0.1')
     [IO.File]::WriteAllLines((Join-Path $Target '.env'),$lines,[Text.UTF8Encoding]::new($false))
     $effective=@{COMPOSE_PROJECT_NAME=$ProjectName;COMPOSE_FILE=((@($files)+@('compose.restore.yaml')) -join $separator);COMPOSE_PATH_SEPARATOR=$separator;APP_ORIGIN=$Origin;SECURE_COOKIES=($originUri.Scheme -eq 'https').ToString().ToLowerInvariant();LOVE_CLOUD_PORT="$Port";LOVE_CLOUD_BIND='127.0.0.1';COMPOSE_PROFILES=''}
     foreach($name in $effective.Keys){$previousEnvironment[$name]=[Environment]::GetEnvironmentVariable($name);[Environment]::SetEnvironmentVariable($name,$effective[$name])}

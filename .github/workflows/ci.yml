@@ -74,6 +74,10 @@ jobs:
         if: ${{ !cancelled() }}
         timeout-minutes: 12
         run: python3 tests/os-source-probe.py --probe alpine --report "${{ runner.temp }}/alpine-source-probe.json"
+      - name: Actual Alpine apk-tools source mirror regression (isolated public Node base)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 12
+        run: python3 tests/os-source-probe.py --probe alpine --alpine-package apk-tools --report "${{ runner.temp }}/apk-tools-source-probe.json"
       - name: Upload only sanitized source-probe results
         if: always()
         uses: actions/upload-artifact@v4
@@ -84,6 +88,7 @@ jobs:
           path: |
             ${{ runner.temp }}/os-source-probe.json
             ${{ runner.temp }}/alpine-source-probe.json
+            ${{ runner.temp }}/apk-tools-source-probe.json
       - name: JavaScript syntax and operational shell syntax
         run: |
           for file in tests/*.mjs scripts/release/*.mjs; do node --check "$file"; done

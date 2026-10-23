@@ -2,7 +2,7 @@
 param([string]$ProjectName='', [string]$Repository='backups/restic')
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$repositoryPath=[IO.Path]::GetFullPath((Join-Path $root $Repository))
+$repositoryPath=[IO.Path]::GetFullPath($Repository,$root)
 $stageRoot=Join-Path $root '.artifacts'
 $stagePath=Join-Path $stageRoot ('backup-'+[guid]::NewGuid().ToString('N'))
 $passwordPath=Join-Path $root '.secrets/backup_password'

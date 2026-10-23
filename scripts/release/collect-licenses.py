@@ -329,7 +329,7 @@ acquire_recipe_directory() {
   cp -a "$(dirname "$build")/." "/output/recipes/$origin/" || exit 1
   # Explicit failure is necessary: this function is called from an if clause,
   # where POSIX shells suppress implicit set -e handling inside functions.
-  (cd "/output/recipes/$origin" && SRCDEST=/output/distfiles abuild -F fetch && SRCDEST=/output/distfiles abuild -F verify) || exit 1
+  (cd "/output/recipes/$origin" && SRCDEST=/output/distfiles DISTFILES_MIRROR=https://distfiles.alpinelinux.org/distfiles/edge abuild -F fetch && SRCDEST=/output/distfiles abuild -F verify) || exit 1
   printf '%s\n' "$archive_url" > "/output/recipes/$origin/recipe-url.txt"
 }
 while IFS='|' read -r origin version commit; do

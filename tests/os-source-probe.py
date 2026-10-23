@@ -107,13 +107,14 @@ def verify_payload(target):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--probe', choices=['ubuntu','alpine'], default='ubuntu')
+    parser.add_argument('--alpine-package', choices=['busybox','apk-tools'], default='busybox')
     parser.add_argument('--image')
     parser.add_argument('--report', default=str(ROOT / '.artifacts/os-source-probe.json'))
     args = parser.parse_args()
     args.image=args.image or (NODE_IMAGE if args.probe=='alpine' else IMAGE)
     assert re.fullmatch(r'.+@sha256:[0-9a-f]{64}',args.image), 'Probe images must be complete immutable registry references.'
     report = {'sourceSha': os.environ.get('GITHUB_SHA'), 'image': args.image,
-              'package': 'busybox' if args.probe=='alpine' else 'systemd', 'version': None if args.probe=='alpine' else VERSION,
+              'package': args.alpine_package if args.probe=='alpine' else 'systemd', 'version': None if args.probe=='alpine' else VERSION,
               'scope': 'one actual Alpine source origin only' if args.probe=='alpine' else 'one historical Ubuntu source only', 'checks': []}
     path = Path(args.report).resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -134,28 +135,29 @@ def main():
         output = Path(tempfile.mkdtemp(prefix='lovecloud-source-probe-'))
         if args.probe=='alpine':
             installed=subprocess.check_output(['docker','run','--rm','--entrypoint','cat',args.image,'/lib/apk/db/installed'],text=True,timeout=90)
-            busybox=next(package for package in collector.parse_apk(installed) if package['name']=='busybox')
-            assert busybox['origin']=='busybox' and re.fullmatch('[0-9a-f]{40}',busybox['commit']), 'Actual APK source origin/commit required.'
-            report['version']=busybox['version'];report['sourceCommit']=busybox['commit']
-            result=acquire(collector,args.image,output,busybox['version'],'alpine-busybox',{'distribution':'alpine','osPackages':[busybox]})
+            package=next(package for package in collector.parse_apk(installed) if package['name']==args.alpine_package)
+            assert package['origin']==args.alpine_package and re.fullmatch('[0-9a-f]{40}',package['commit']), 'Actual APK source origin/commit required.'
+            report['version']=package['version'];report['sourceCommit']=package['commit']
+            role='alpine-'+args.alpine_package
+            result=acquire(collector,args.image,output,package['version'],role,{'distribution':'alpine','osPackages':[package]})
             assert result['status']=='PASS'
-            target=output/'os-sources/alpine-busybox'
+            target=output/'os-sources'/role
             assert (target/'source-fetch-complete.txt').read_text()=='sources-verified\n'
-            recipe=target/'recipes/busybox/APKBUILD'
+            recipe=target/'recipes'/package['origin']/'APKBUILD'
             recipe_text=recipe.read_text()
             package_version=re.search(r'^pkgver=([^\n]+)',recipe_text,re.M)[1].strip("'\"")
             package_release=re.search(r'^pkgrel=([^\n]+)',recipe_text,re.M)[1].strip("'\"")
-            assert busybox['version']==package_version+'-r'+package_release, 'Recipe must match actual installed APK version.'
+            assert package['version']==package_version+'-r'+package_release, 'Recipe must match actual installed APK version.'
             provenance=(recipe.parent/'recipe-url.txt').read_text()
-            provider=verify_aports_provenance(provenance,busybox['commit'])
+            provider=verify_aports_provenance(provenance,package['commit'],package['origin'])
             artifacts=[]
             for file in (target/'distfiles').rglob('*'):
                 if file.is_file():
                     with file.open('rb') as stream: digest=hashlib.file_digest(stream,'sha256').hexdigest()
                     artifacts.append({'name':file.name,'sha256':digest,'bytes':file.stat().st_size})
             assert artifacts, 'Actual abuild-fetched and checksum-verified distfiles required.'
-            report['checks'].append({'name':'actual Alpine busybox exact aports fetch and verify','status':'PASS','recipe':provenance.strip(),'recipeProvider':provider,'artifacts':artifacts})
-            print('PASS real Linux Docker Alpine probe: installed busybox exact version+aports commit, source recipe, abuild fetch/verify and completion marker.')
+            report['checks'].append({'name':'actual Alpine '+args.alpine_package+' exact aports fetch and verify','status':'PASS','recipe':provenance.strip(),'recipeProvider':provider,'artifacts':artifacts})
+            print('PASS real Linux Docker Alpine probe: installed '+args.alpine_package+' exact version+aports commit, source recipe, abuild fetch/verify and completion marker.')
             return
         result = acquire(collector, args.image, output, VERSION, 'historical')
         assert result['status'] == 'PASS'
