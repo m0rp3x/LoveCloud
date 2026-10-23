@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec=importlib.util.spec_from_file_location('os_source_probe',Path(__file__).with_name('os-source-probe.py'))
 probe=importlib.util.module_from_spec(spec)
@@ -60,6 +61,17 @@ class SourceEvidenceChecks(unittest.TestCase):
         (self.root/'source-fetch-complete.txt').write_text('started\n')
         with self.assertRaisesRegex(AssertionError,'completion marker'):
             probe.verify_payload(self.root)
+
+    def test_unreadable_retained_evidence_is_not_silently_ignored(self):
+        evidence=self.root/'source-metadata/retained-evidence.txt'
+        evidence.write_text('retained evidence\n')
+        original=Path.read_text
+        def read(path,*args,**kwargs):
+            if path==evidence:raise PermissionError('fixture unreadable retained evidence')
+            return original(path,*args,**kwargs)
+        with patch.object(Path,'read_text',read):
+            with self.assertRaisesRegex(PermissionError,'unreadable retained evidence'):
+                probe.verify_payload(self.root)
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

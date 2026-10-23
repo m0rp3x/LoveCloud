@@ -71,8 +71,19 @@ jobs:
         timeout-minutes: 20
         run: python3 tests/os-source-probe.py --report "${{ runner.temp }}/os-source-probe.json"
       - name: Actual Alpine busybox source probe (isolated public Node base)
+        if: ${{ !cancelled() }}
         timeout-minutes: 12
         run: python3 tests/os-source-probe.py --probe alpine --report "${{ runner.temp }}/alpine-source-probe.json"
+      - name: Upload only sanitized source-probe results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-probe-results
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/os-source-probe.json
+            ${{ runner.temp }}/alpine-source-probe.json
       - name: JavaScript syntax and operational shell syntax
         run: |
           for file in tests/*.mjs scripts/release/*.mjs; do node --check "$file"; done
