@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import tempfile
@@ -191,6 +192,80 @@ class LicenseCollectorChecks(unittest.TestCase):
         report,static=self.notice_fixture(indexed=False)
         with self.assertRaisesRegex(RuntimeError,'Exact Npgsql version requires reviewed notice provenance'):
             collector.validate_static_nuget_notices(report,self.out,static)
+
+
+class AlpineRecipeProviderChecks(unittest.TestCase):
+    """Execute the real provider-selection shell flow with offline I/O stubs."""
+    commit = 'c3ef5d10e6ef6528852c51f0564963e2f8c1be19'
+
+    def selection(self, scenario):
+        shell = str(Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'Git/bin/bash.exe') if os.name == 'nt' else shutil.which('sh')
+        if not shell or not Path(shell).is_file():
+            self.fail('A POSIX shell is required to execute source-provider regression checks.')
+        helper = collector.ALPINE_FETCH
+        selection = helper[helper.index('  found=0\n'):helper.index('\ndone < /output/packages.txt')]
+        mocks = r'''
+download_recipe_archive() {
+  archive_url=$1
+  printf 'download %s\n' "$1"
+  case "$scenario:$1" in
+    unavailable:*) return 1;;
+    github_unavailable:*codeload.github.com*) return 1;;
+    gitlab_community:*codeload.github.com*) return 1;;
+    gitlab_community:*gitlab.alpinelinux.org*main/busybox) return 1;;
+  esac
+  return 0
+}
+acquire_recipe_directory() {
+  printf 'acquire %s %s\n' "$1" "$archive_url"
+  case "$scenario:$archive_url" in
+    checksum_failure:*) exit 42;;
+    github_missing_recipe:*codeload.github.com*) return 1;;
+  esac
+  return 0
+}
+'''
+        program = ('set -eu\nscenario=' + scenario + '\norigin=busybox\nversion=1.37.0-r31\ncommit=' + self.commit + '\n' + mocks + selection + '\n')
+        return subprocess.run([shell, '-s'], input=program, text=True, capture_output=True, check=False)
+
+    def downloads(self, result):
+        return [line.removeprefix('download ') for line in result.stdout.splitlines() if line.startswith('download ')]
+
+    def test_official_mirror_is_first_and_avoids_canonical_network_when_successful(self):
+        result = self.selection('github_ok')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.downloads(result), ['https://codeload.github.com/alpinelinux/aports/tar.gz/' + self.commit])
+
+    def test_mirror_failure_falls_back_to_exact_canonical_commit(self):
+        result = self.selection('github_unavailable')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.downloads(result), [
+            'https://codeload.github.com/alpinelinux/aports/tar.gz/' + self.commit,
+            'https://gitlab.alpinelinux.org/alpine/aports/-/archive/' + self.commit + '/aports-' + self.commit + '.tar.gz?path=main/busybox'])
+
+    def test_missing_mirror_recipe_falls_back_after_checking_all_repository_paths(self):
+        result = self.selection('github_missing_recipe')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        mirror_attempts = [line.split()[1] for line in result.stdout.splitlines() if line.startswith('acquire ') and 'codeload.github.com' in line]
+        self.assertEqual(mirror_attempts, ['main', 'community', 'testing'])
+        self.assertEqual(len(self.downloads(result)), 2)
+
+    def test_canonical_fallback_can_find_a_community_recipe(self):
+        result = self.selection('gitlab_community')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(self.downloads(result)[-1].endswith('?path=community/busybox'))
+
+    def test_source_checksum_failure_cannot_be_hidden_by_provider_fallback(self):
+        result = self.selection('checksum_failure')
+        self.assertEqual(result.returncode, 42)
+        self.assertEqual(len(self.downloads(result)), 1)
+        self.assertNotIn('gitlab.alpinelinux.org', result.stdout)
+
+    def test_unavailable_exact_providers_fail_closed(self):
+        result = self.selection('unavailable')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(len(self.downloads(result)), 4)
+        self.assertTrue(all(self.commit in url for url in self.downloads(result)))
 
 
 if __name__ == '__main__':

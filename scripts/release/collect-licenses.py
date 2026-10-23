@@ -338,26 +338,25 @@ while IFS='|' read -r origin version commit; do
   case "$commit" in ''|*[!0-9a-f]*) echo 'APK source requires an exact commit.' >&2; exit 1;; esac
   [ "${#commit}" = 40 ] || { echo 'APK source requires a complete commit.' >&2; exit 1; }
   found=0
-  for repo in main community testing; do
-    recipe="https://gitlab.alpinelinux.org/alpine/aports/-/archive/$commit/aports-$commit.tar.gz?path=$repo/$origin"
-    if download_recipe_archive "$recipe" && acquire_recipe_directory "$repo"; then
-      found=1
-      break
-    fi
-  done
+  # Prefer the official mirror: canonical GitLab can time out from CI networks.
+  # Both providers still require the exact same full Git commit and checksums.
+  recipe="https://codeload.github.com/alpinelinux/aports/tar.gz/$commit"
+  if download_recipe_archive "$recipe"; then
+    for repo in main community testing; do
+      if acquire_recipe_directory "$repo"; then
+        found=1
+        break
+      fi
+    done
+  fi
   if [ "$found" = 0 ]; then
-    # Official alpinelinux/aports mirror identifies GitLab alpine/aports as its
-    # homepage. The same full Git commit is mandatory; never fetch a branch or
-    # a latest release. Download this fallback only once, then inspect repos.
-    recipe="https://codeload.github.com/alpinelinux/aports/tar.gz/$commit"
-    if download_recipe_archive "$recipe"; then
-      for repo in main community testing; do
-        if acquire_recipe_directory "$repo"; then
-          found=1
-          break
-        fi
-      done
-    fi
+    for repo in main community testing; do
+      recipe="https://gitlab.alpinelinux.org/alpine/aports/-/archive/$commit/aports-$commit.tar.gz?path=$repo/$origin"
+      if download_recipe_archive "$recipe" && acquire_recipe_directory "$repo"; then
+        found=1
+        break
+      fi
+    done
   fi
   [ "$found" = 1 ] || { echo "Cannot acquire source recipe for $origin $version" >&2; exit 1; }
 done < /output/packages.txt
