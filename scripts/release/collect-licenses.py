@@ -347,10 +347,53 @@ mkdir -p /output/repositories /output/source-metadata
 cp -a /etc/apt/sources.list.d /output/repositories/
 [ ! -f /etc/apt/sources.list ] || cp /etc/apt/sources.list /output/repositories/
 cd /output/sources
+snapshot_id=20260901T000000Z
+snapshot_root=/output/source-metadata/ubuntu-snapshot
+snapshot_ready=false
+snapshot_apt() {
+  apt-get -o Dir::Etc::sourcelist=/dev/null \
+    -o Dir::Etc::sourceparts="$snapshot_root/sources.list.d" \
+    -o Dir::State::lists="$snapshot_root/lists" \
+    "$@" --snapshot "$snapshot_id"
+}
+prepare_snapshot() {
+  [ "$snapshot_ready" = false ] || return
+  # This dated fallback is Ubuntu-only. Keep the image's current repositories
+  # and Signed-By trust roots unchanged; historical indexes live separately.
+  grep -Eq '^ID="?ubuntu"?$' /etc/os-release || {
+    echo 'Exact source version unavailable; historical fallback supports Ubuntu only.' >&2; exit 1;
+  }
+  mkdir -p "$snapshot_root/sources.list.d" "$snapshot_root/lists/partial"
+  for source in /etc/apt/sources.list.d/*-lovecloud-src.sources; do
+    [ -f "$source" ] || continue
+    awk -v snapshot="$snapshot_id" 'BEGIN {RS=""; ORS="\n\n"}
+      /(^|\n)URIs: [^\n]*https?:\/\/([A-Za-z0-9.-]+\.)?(archive|security|ports)\.ubuntu\.com\/ubuntu(-ports)?\/?([ \n]|$)/ {
+        gsub(/(^|\n)Types:[^\n]*/, "\nTypes: deb-src")
+        gsub(/(^|\n)Snapshot:[^\n]*/, "")
+        print $0 "\nSnapshot: " snapshot
+      }' "$source" > "$snapshot_root/sources.list.d/$(basename "$source")"
+  done
+  # Ubuntu 24.04's official deb822 files retain Signed-By. Do not invent
+  # replacement keys or relax APT authentication for an unknown source setup.
+  grep -l '^Signed-By:' "$snapshot_root"/sources.list.d/*.sources >/dev/null || {
+    echo 'No authenticated Ubuntu source stanza for historical fallback.' >&2; exit 1;
+  }
+  printf '%s\n' "$snapshot_id" > "$snapshot_root/snapshot-id.txt"
+  snapshot_apt update >/dev/null
+  snapshot_ready=true
+}
 while IFS='|' read -r package version; do
   [ -n "$package" ] || continue
-  apt-get source --print-uris "$package=$version" > "/output/source-metadata/$package-uris.txt"
-  apt-get source --download-only "$package=$version"
+  if apt-get source --only-source --print-uris "$package=$version" > "/output/source-metadata/$package-uris.txt"; then
+    apt-get source --only-source --download-only "$package=$version"
+  else
+    # Old base-image packages can disappear from current Sources indexes.
+    # The exact same source version must exist in a signed historical index;
+    # a missing version still fails and never falls back to the latest source.
+    prepare_snapshot
+    snapshot_apt source --only-source --print-uris "$package=$version" > "/output/source-metadata/$package-uris.txt"
+    snapshot_apt source --only-source --download-only "$package=$version"
+  fi
 done < /output/packages.txt
 printf 'sources-verified\n' > /output/source-fetch-complete.txt
 '''
