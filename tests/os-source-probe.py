@@ -23,6 +23,7 @@ from unittest.mock import patch
 
 IMAGE = 'mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b'
 NODE_IMAGE = 'node@sha256:1200d815de24f8dcca745fbf7651d166034a35adbcad8860a8538ffff44f1420'
+POSTGRES_IMAGE = 'postgres@sha256:3b0ef735388b2cb097fc29b8bb421d86d57d0ddbe7aa1fbd6493e06d65028503'
 NGINX_IMAGE = 'nginx@sha256:2db7d28517d1fba17c2da3210395f7be11a11b419246ad0da2edf782af72f367'
 VERSION = '255.4-1ubuntu8.17'
 SNAPSHOT = 'https://snapshot.ubuntu.com/ubuntu/20260901T000000Z/'
@@ -157,11 +158,12 @@ def verify_payload(target):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--probe', choices=['ubuntu','alpine','nginx-vendor'], default='ubuntu')
-    parser.add_argument('--alpine-package', choices=['busybox','apk-tools'], default='busybox')
+    parser.add_argument('--alpine-package', choices=['busybox','apk-tools','nss_wrapper'], default='busybox')
     parser.add_argument('--image')
     parser.add_argument('--report', default=str(ROOT / '.artifacts/os-source-probe.json'))
     args = parser.parse_args()
-    args.image=args.image or (NGINX_IMAGE if args.probe=='nginx-vendor' else NODE_IMAGE if args.probe=='alpine' else IMAGE)
+    alpine_image=POSTGRES_IMAGE if args.alpine_package=='nss_wrapper' else NODE_IMAGE
+    args.image=args.image or (NGINX_IMAGE if args.probe=='nginx-vendor' else alpine_image if args.probe=='alpine' else IMAGE)
     assert re.fullmatch(r'.+@sha256:[0-9a-f]{64}',args.image), 'Probe images must be complete immutable registry references.'
     report = {'sourceSha': os.environ.get('GITHUB_SHA'), 'image': args.image,
               'package': 'six catalogued nginx vendor APKs' if args.probe=='nginx-vendor' else args.alpine_package if args.probe=='alpine' else 'systemd',
