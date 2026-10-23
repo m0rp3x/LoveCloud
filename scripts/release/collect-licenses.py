@@ -13,10 +13,12 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import tomllib
 import urllib.request
 import urllib.error
 import xml.etree.ElementTree as ET
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -299,6 +301,167 @@ def validate_static_nuget_notices(report, out, static=None):
     return result
 
 
+def nginx_catalog(catalog=None):
+    path=Path(catalog) if catalog is not None else ROOT/'licenses/nginx-vendor-1.31.8.json'
+    return path,json.loads(path.read_text(encoding='utf-8'))
+
+
+def select_nginx_vendor_packages(image, packages, catalog=None):
+    """Recognize only the reviewed real vendor APKs, never invented aports IDs."""
+    _,review=nginx_catalog(catalog)
+    if image.rsplit('@',1)[-1]!=review['imageDigest']: return []
+    actual={package['name']:package for package in packages}
+    selected=[]
+    for expected in review['packages']:
+        package=actual.get(expected['name'])
+        if (package is None or package['version']!=expected['version']
+            or package['origin']!=expected['origin'] or package['commit']
+            or package['license']!=expected['apkLicense']
+            or package.get('installedBytes',0)<=0 or package.get('fileEntries',0)<=0):
+            raise RuntimeError('Reviewed nginx vendor APK identity/payload mismatch: '+expected['name'])
+        selected.append(package)
+    return selected
+
+
+def source_member(archive, member):
+    with tarfile.open(archive,'r:gz') as source:
+        info=source.getmember(member)
+        if not info.isfile() or info.size>32*1024*1024:
+            raise RuntimeError('Required vendor source member is not a bounded regular file: '+member)
+        return source.extractfile(info).read()
+
+
+def collect_nginx_vendor_sources(image, vendor_packages, target, image_licenses, download=True, catalog=None):
+    """Retain reviewed upstream source, packaging patches and actual notices.
+
+    The APK license field remains untouched. Upstream ACME Apache-2.0 and
+    QuickJS MIT notices are recorded separately from the vendor's BSD-like
+    generic APK claim. Cargo sources form a lockfile superset, not a binary SBOM.
+    """
+    catalog_path,review=nginx_catalog(catalog)
+    selected=select_nginx_vendor_packages(image,vendor_packages,catalog)
+    if len(selected)!=len(review['packages']): raise RuntimeError('Unreviewed nginx vendor image')
+    target=Path(target)
+    target.mkdir(parents=True,exist_ok=True)
+    if any(target.iterdir()): raise RuntimeError('Vendor source output must be empty.')
+    result={'status':'NOT RUN','imageDigest':review['imageDigest'],'catalogSha256':digest(catalog_path),
+            'packages':selected,'mappings':review['packages'],'sources':[],'licenses':[],
+            'cargoSourceScope':review['cargo']['sourceScope']}
+    if not download:
+        (target/'source-provenance.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+        return result
+    archives={}
+    def retain(data,relative,source_file,member=None,kind='upstream license/notice'):
+        path=target/relative
+        path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_bytes(data)
+        entry={'file':relative,'sha256':digest(path),'sourceFile':source_file,'kind':kind}
+        if member: entry['sourceMember']=member
+        result['licenses'].append(entry)
+    for source in review['sources']:
+        relative='sources/'+source['file']
+        path=target/relative
+        fetch(source['url'],path)
+        if digest(path)!=source['sha256']: raise RuntimeError('Vendor source SHA256 mismatch: '+source['id'])
+        entry={'file':relative,'url':source['url'],'sha256':digest(path),'bytes':path.stat().st_size,'component':source['id'],'upstreamLicense':source['upstreamLicense']}
+        if 'sha512' in source:
+            with path.open('rb') as stream: actual=hashlib.file_digest(stream,'sha512').hexdigest()
+            if actual!=source['sha512']: raise RuntimeError('Vendor source SHA512 mismatch: '+source['id'])
+            checksum_text=source_member(archives['pkg-oss'],source['pkgOssChecksumMember']).decode('utf-8')
+            expected=re.search(r'^'+source['sha512']+r'\s+'+re.escape(source['file'])+r'$',checksum_text,re.M)
+            if not expected: raise RuntimeError('Vendor source is not covered by exact pkg-oss checksums: '+source['id'])
+            entry['sha512']=actual
+            entry['pkgOssChecksumMember']=source['pkgOssChecksumMember']
+        license_bytes=source_member(path,source['licenseMember'])
+        if len(license_bytes)<300: raise RuntimeError('Missing full upstream vendor license: '+source['id'])
+        retain(license_bytes,'licenses/'+source['id']+'-LICENSE.txt',relative,source['licenseMember'])
+        result['sources'].append(entry)
+        archives[source['id']]=path
+    packaging=review['packaging']
+    for member in packaging['requiredMembers']:
+        full=packaging['root']+'/'+member
+        data=source_member(archives['pkg-oss'],full)
+        path=target/'packaging'/member
+        path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_bytes(data)
+        result['sources'].append({'file':'packaging/'+member,'url':review['sources'][0]['url']+'#'+member,
+                                  'sha256':digest(path),'bytes':len(data),'component':'pkg-oss build recipe/patch',
+                                  'sourceFile':'sources/'+review['sources'][0]['file'],'sourceMember':full})
+    # Match the actual distributed COPYRIGHT bytes to the reviewed packaging
+    # source instead of trusting only a generic APK SPDX/license string.
+    for expected in review['packages']:
+        actual=Path(image_licenses)/expected['name']/'COPYRIGHT'
+        if not actual.is_file(): raise RuntimeError('Vendor image lacks COPYRIGHT: '+expected['name'])
+        data=actual.read_bytes()
+        upstream=source_member(archives['pkg-oss'],expected['copyrightMember'])
+        if data.replace(b'\r\n',b'\n').strip()!=upstream.replace(b'\r\n',b'\n').strip():
+            raise RuntimeError('Actual vendor COPYRIGHT differs from reviewed packaging: '+expected['name'])
+        retain(data,'licenses/'+expected['name']+'-COPYRIGHT.txt','actual image /usr/share/licenses/'+expected['name']+'/COPYRIGHT',expected['copyrightMember'],'actual distributed vendor COPYRIGHT')
+    lock=tomllib.loads(source_member(archives['acme'],review['cargo']['lockMember']).decode('utf-8'))
+    registry=[]
+    for package in lock['package']:
+        if 'source' not in package: continue
+        if (package['source']!=review['cargo']['registry'] or not re.fullmatch(r'[A-Za-z0-9_-]+',package['name'])
+            or not re.fullmatch(r'[A-Za-z0-9.+_-]+',package['version'])
+            or not re.fullmatch(r'[0-9a-f]{64}',package.get('checksum',''))):
+            raise RuntimeError('Unreviewed ACME Cargo source/checksum: '+package['name'])
+        registry.append(package)
+    if not registry: raise RuntimeError('ACME Cargo.lock contains no pinned registry sources')
+    def collect_crate(package):
+        name=package['name']+'-'+package['version']
+        relative='cargo/'+name+'.crate'
+        url='https://static.crates.io/crates/'+package['name']+'/'+name+'.crate'
+        path=target/relative
+        fetch(url,path)
+        if digest(path)!=package['checksum']: raise RuntimeError('Cargo.lock source checksum mismatch: '+name)
+        licenses=[]
+        with tarfile.open(path,'r:gz') as archive:
+            for info in archive:
+                if info.isfile() and LICENSE_NAME.search(PurePosixPath(info.name).name):
+                    data=archive.extractfile(info).read()
+                    if len(data)>32*1024*1024: raise RuntimeError('Oversized Cargo license: '+name)
+                    file='licenses/cargo/'+name+'/'+safe_name(info.name)
+                    destination=target/file
+                    destination.parent.mkdir(parents=True,exist_ok=True)
+                    destination.write_bytes(data)
+                    licenses.append({'file':file,'sha256':digest(destination),'sourceFile':relative,'sourceMember':info.name,'kind':'Cargo source-superset notice'})
+        if not licenses:
+            selection=next((item for item in review['cargo'].get('licenseSelections',[])
+                            if item['name']==package['name'] and item['version']==package['version']
+                            and item['checksum']==package['checksum']),None)
+            if selection is None: raise RuntimeError('Locked Cargo source lacks retained license/notice: '+name)
+            metadata_bytes=source_member(path,selection['metadataMember'])
+            metadata=tomllib.loads(metadata_bytes.decode('utf-8'))['package']
+            license_path=ROOT/selection['licenseFile']
+            if (metadata.get('name')!=package['name'] or metadata.get('version')!=package['version']
+                or metadata.get('license')!=selection['declaredLicense'] or not metadata.get('authors')
+                or selection['selectedLicense']!='Apache-2.0'
+                or digest(license_path)!=selection['licenseSha256']):
+                raise RuntimeError('Reviewed Cargo license alternative mismatch: '+name)
+            for suffix,data,member,kind in [
+                ('Cargo.toml',metadata_bytes,selection['metadataMember'],'Original crate license/author declaration'),
+                ('LICENSE-Apache-2.0.txt',license_path.read_bytes(),None,'Explicitly selected Apache-2.0 alternative; full official terms')]:
+                file='licenses/cargo/'+name+'/'+suffix
+                destination=target/file
+                destination.parent.mkdir(parents=True,exist_ok=True)
+                destination.write_bytes(data)
+                entry={'file':file,'sha256':digest(destination),'sourceFile':relative,
+                       'kind':kind,'selectedLicense':selection['selectedLicense']}
+                if member: entry['sourceMember']=member
+                else: entry['licenseTextSource']=selection['licenseFile']
+                licenses.append(entry)
+        return {'file':relative,'url':url,'sha256':digest(path),'bytes':path.stat().st_size,'component':'cargo-lock-source-superset'},licenses
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        for source,licenses in executor.map(collect_crate,registry):
+            result['sources'].append(source)
+            result['licenses'].extend(licenses)
+    result['cargoRegistrySources']=len(registry)
+    result['status']='PASS'
+    (target/'source-provenance.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    (target/'source-fetch-complete.txt').write_text('vendor-sources-verified\n',encoding='utf-8')
+    return result
+
+
 ALPINE_FETCH = r'''set -eu
 apk add --no-cache alpine-sdk curl >/dev/null
 mkdir -p /output/recipes /output/distfiles
@@ -445,9 +608,12 @@ def collect_os_sources(role, image, report, out, download):
     target=out/'os-sources'/role
     target.mkdir(parents=True,exist_ok=True)
     packages=[]
+    vendor_packages=[]
     if report['distribution']=='alpine':
         origins={}
         virtual=[]
+        vendor_packages=select_nginx_vendor_packages(image,report['osPackages'])
+        vendor_ids={(package['name'],package['version']) for package in vendor_packages}
         def dependency_name(value): return re.split(r'[<>=~]',value,1)[0]
         providers={}
         for package in report['osPackages']:
@@ -455,6 +621,7 @@ def collect_os_sources(role, image, report, out, download):
                 providers.setdefault(dependency_name(name),[]).append(package['name'])
         for package in report['osPackages']:
             if not package['origin'] or not package['commit']:
+                if (package['name'],package['version']) in vendor_ids: continue
                 # `apk add --virtual .postgresql-rundeps ...` creates a local,
                 # fileless dependency record. Prove it owns no payload and all
                 # dependencies resolve to installed providers; do not skip a
@@ -482,6 +649,9 @@ def collect_os_sources(role, image, report, out, download):
     if not packages: raise RuntimeError('No OS package inventory for '+role)
     (target/'packages.txt').write_text('\n'.join(packages)+'\n',encoding='utf-8')
     (target/'acquire-sources.sh').write_text(script,encoding='utf-8')
+    vendor_result=None
+    if vendor_packages:
+        vendor_result=collect_nginx_vendor_sources(image,vendor_packages,target/'vendor-nginx',out/role/'files/usr/share/licenses',download)
     if download:
         subprocess.run(['docker','run','--rm','-i','--user','0','--entrypoint','/bin/sh',
                         '--mount','type=bind,source='+str(target.resolve())+',target=/output',image,'-s'],
@@ -497,7 +667,7 @@ def collect_os_sources(role, image, report, out, download):
                 raise RuntimeError('No acquired source distfiles: '+role)
         elif len(list((target/'sources').glob('*.dsc')))<len(packages):
             raise RuntimeError('Missing acquired Debian source descriptors: '+role)
-    return {'status':'PASS' if download else 'NOT RUN','packages':len(packages),
+    return {'status':'PASS' if download else 'NOT RUN','packages':len(packages),'vendorPackages':len(vendor_packages),'vendorSources':vendor_result,
             'method':'exact aports recipe+abuild fetch' if report['distribution']=='alpine' else 'configured signed apt deb-src exact source versions',
             'location':str(target.relative_to(out))}
 

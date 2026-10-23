@@ -61,6 +61,18 @@ Sources for the exact Alpine packages are available through the matching
 Alpine package repository; Debian/Ubuntu sources through their corresponding
 source package repositories. Consult the SBOM and recorded image provenance.
 
+The pinned official nginx vendor APKs do not record an Alpine aports commit.
+licenses/nginx-vendor-1.31.8.json maps only the reviewed exact image digest and
+six real package versions to nginx 1.31.8, njs 1.0.2, nginx-acme 0.4.1, QuickJS
+and immutable nginx/pkg-oss packaging/patches. Their full upstream license texts
+are retained in licenses/vendor-nginx/. Raw APK license claims stay separate:
+ACME source is Apache-2.0, QuickJS is MIT, and nginx/njs are BSD-2-Clause.
+The release source bundle additionally retains checksum-pinned ACME Cargo.lock
+registry sources and their notices as a source superset, not a binary SBOM.
+The exact http-serde 2.1.1 crate declares Apache-2.0 OR MIT but omits standalone
+license files; its Apache-2.0 alternative is explicitly selected with original
+Cargo.toml author/license metadata and the full Apache terms retained.
+
 Images, illustrations and preview
 --------------------------------
 LoveCloud vector illustrations and documentation screenshots are project
