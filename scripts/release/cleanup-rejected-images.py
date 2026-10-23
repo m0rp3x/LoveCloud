@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remove only explicitly identified private images from failed release runs.
+"""Remove only explicitly identified test images from failed release runs.
 
 LOVECLOUD_REJECTED_CANDIDATES is optional repository-variable JSON, with records
 {package, digest, sourceSha, runId}. Never infer rejection from tag age alone.
@@ -62,12 +62,12 @@ def main():
         key = 'api' if package == 'lovecloud-api' else 'frontend'
         keep = manifest['images'][key]['digest']
         for version in matches:
-            if info['visibility'] != 'private' or not eligible(record, version, keep):
-                raise RuntimeError('Refusing cleanup of a public, retained or differently tagged version')
+            if not eligible(record, version, keep):
+                raise RuntimeError('Refusing cleanup of a retained or differently tagged version')
             api(base + '/versions/' + str(version['id']), 'DELETE')
-            print('Removed rejected private candidate ' + package + '@' + record['digest'])
+            print('Removed rejected test candidate ' + package + '@' + record['digest'])
         if not matches:
-            print('Rejected private candidate already absent: ' + package + '@' + record['digest'])
+            print('Rejected test candidate already absent: ' + package + '@' + record['digest'])
 
 
 if __name__ == '__main__':

@@ -233,7 +233,7 @@ jobs:
           run-id: ${{ inputs.candidate_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: .artifacts/release-public
-      - name: Remove explicitly rejected private test images before public distribution
+      - name: Remove explicitly rejected test image versions before release
         env:
           LOVECLOUD_REJECTED_CANDIDATES: ${{ vars.LOVECLOUD_REJECTED_CANDIDATES || '[]' }}
         run: python3 scripts/release/cleanup-rejected-images.py --manifest .artifacts/release-public/release-manifest.json
